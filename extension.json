@@ -1,0 +1,59 @@
+{
+  "name": "MyExtension",
+  "author": "Wiem Ben Araar",
+  "description": "Extension pour la gestion des Walls rideaux.",
+  "version": "1.0",
+  "revit": "2019-2023",
+  "engine": "python",
+  "tab": "UnitWall",
+  "components": [
+    {
+      "name": "Custom Toolbar",
+      "type": "panel",
+      "components": [
+        {
+          "name": "Walls",
+          "type": "pulldown",
+          "components": [
+            {
+              "name": "Inspect Walls",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Inspect Walls.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Inspect Walls.pushbutton/icon.png",
+              "tooltip": "Inspecter et créer des Walls rideaux."
+            }
+          ]
+        },
+        {
+          "name": "Panels",
+          "type": "pulldown",
+          "components": [
+            {
+              "name": "Famille Panels",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Famille Panels.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Panel Profiles.pushbutton/icon.png",
+              "tooltip": "Gérer les familles de Panels de mur rideau."
+            },
+            {
+              "name": "Insert Profile",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Profile.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Profile.pushbutton/icon.png",
+              "tooltip": "Insérer un profilé dans un mur rideau."
+            },
+            {
+              "name": "Edit Panels",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Edit Panels.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Edit Panels.pushbutton/icon.png",
+              "tooltip": "Éditer les Panels de mur rideau."
+            },
+            {
+              "name": "Update Params",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Params.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Params.pushbutton/icon.png",
+              "tooltip": "Mettre à jour les paramètres de panneau de mur rideau."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
