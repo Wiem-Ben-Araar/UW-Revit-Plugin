@@ -30,7 +30,7 @@
             {
               "name": "Famille Panels",
               "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Famille Panels.pushbutton/script.py",
-              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Panel Profiles.pushbutton/icon.png",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Famille Panels.pushbutton/icon.png",
               "tooltip": "Gérer les familles de Panels de mur rideau."
             },
             {
@@ -38,6 +38,12 @@
               "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Profile.pushbutton/script.py",
               "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Profile.pushbutton/icon.png",
               "tooltip": "Insérer un profilé dans un mur rideau."
+            },
+            {
+              "name": "Modify Profile",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Modify Profile.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Modify Profile.pushbutton/icon.png",
+              "tooltip": "Modifier, déplacer ou supprimer un profilé dans un mur rideau."
             },
             {
               "name": "Edit Panels",
@@ -50,6 +56,18 @@
               "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Params.pushbutton/script.py",
               "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Params.pushbutton/icon.png",
               "tooltip": "Mettre à jour les paramètres de panneau de mur rideau."
+            }
+          ]
+        },
+        {
+          "name": "Ouverture",
+          "type": "pulldown",
+          "components": [
+            {
+              "name": "Insert Ouverture",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Ouverture.pulldown/Insert Ouverture.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Ouverture.pulldown/Insert Ouverture.pushbutton/icon.png",
+              "tooltip": "Insérer une ouverture dans un mur rideau."
             }
           ]
         }
