@@ -1,4 +1,16 @@
 # -*- coding: utf-8 -*-
+"""
+
+Description:
+This script allows the user to select a curtain wall panel and updates its internal parameters (height and width).
+
+Mode of use:
+1. Select a curtain wall panel in Revit.
+2. The script will automatically update the internal parameters based on the panel dimensions.
+
+Version: v2
+Author: Wiem Ben Araar, Amira Dridi
+"""
 from Autodesk.Revit.DB import Transaction
 from pyrevit import forms
 from Autodesk.Revit.UI.Selection import ObjectType
@@ -19,7 +31,7 @@ def update_panel_parameters(doc, element):
 
         if h_panneau_param and l_panneau_param:
             # Commencez une transaction pour effectuer les modifications
-            with Transaction(doc, "Changer les paramètres H_PANNEAU et L_PANNEAU") as t:
+            with Transaction(doc, "Change the H_PANNEAU and L_PANNEAU parameters") as t:
                 t.Start()
 
                 # Modifier les paramètres d'occurrence
@@ -29,9 +41,9 @@ def update_panel_parameters(doc, element):
                 t.Commit()
 
         else:
-            forms.alert("Les paramètres d'occurrence 'H_PANNEAU' ou 'L_PANNEAU' n'ont pas été trouvés pour l'élément sélectionné.", exitscript=True)
+            forms.alert("The occurrence parameters 'H_PANNEAU' or 'L_PANNEAU' were not found for the selected element.", exitscript=True)
     else:
-        forms.alert("Les paramètres 'Hauteur' ou 'Largeur' n'ont pas été trouvés pour l'élément sélectionné.", exitscript=True)
+        forms.alert("The 'Height' or 'Width' parameters were not found for the selected item.", exitscript=True)
 
 # Exécution principale
 doc = __revit__.ActiveUIDocument.Document
@@ -40,11 +52,11 @@ uidoc = __revit__.ActiveUIDocument
 try:
     # Sélectionner un panneau de mur-rideau
     selection = uidoc.Selection
-    picked_ref = selection.PickObject(ObjectType.Element, "Sélectionnez un panneau de mur-rideau")
+    picked_ref = selection.PickObject(ObjectType.Element, "Select a curtain wall panel")
     element = doc.GetElement(picked_ref.ElementId)
 
     if not element:
-        raise Exception("Aucun élément sélectionné.")
+        raise Exception("No items selected.")
 
     update_panel_parameters(doc, element)
 

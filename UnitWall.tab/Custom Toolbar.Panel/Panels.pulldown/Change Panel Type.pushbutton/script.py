@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Title: Update Panel Profiles on Type Selection
+
 Description:
-This script allows the user to select a curtain wall panel type and updates the 'H_PANNEAU' and 'L_PANNEAU'
-parameters based on the height and width of the selected panel.
+This script allows the user to select a curtain wall panel type and updates the panel type.
 
 Mode of use:
 1. Select a curtain wall panel in Revit.
 2. Choose a panel type in the dialog box.
-3. The script will update the 'H_PANNEAU' and 'L_PANNEAU' parameters based on the panel's dimensions.
+3. The script will update the panel type.
 
-Version: v1
-Author: Wiem Ben Araar, Amira Dridi
+Version: v2
+Author: Wiem Ben Araar
 """
+
 
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog

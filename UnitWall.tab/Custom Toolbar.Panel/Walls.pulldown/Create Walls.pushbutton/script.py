@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Title: Curtain Wall Creation
+
 Description:
 This script creates curtain walls in Revit by following a series of guided steps.
 It allows you to choose the panel type, level, creation mode, height, and vertical and horizontal spacing. Then, it transforms the selected curves into straight lines if necessary and creates curtain walls according to the given specifications.
@@ -14,11 +14,14 @@ How to use:
 6. Select the edges where you want to create the curtain walls.
 
 
-Version: v1
-Author: Wiem Ben Araar, Amira Dridi
+Version: v2
+Author: Wiem Ben Araar
 """
 
-__title__ = 'Create the Wall(s)'
+__title__ = ('Create Wall'
+             ''
+             ''
+             '')
 
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog
@@ -71,15 +74,37 @@ def convert_curve_to_line(curve):
         return curve
     return None
 
-def process_edge(curve, curtain_wall_type_id, level_id, height_meters, vertical_spacing_meters, horizontal_spacing_meters):
-    """Créer un mur rideau sur une courbe donnée."""
+
+def process_edge(curve, curtain_wall_type_id, level_id, height_meters, vertical_spacing_meters,
+                 horizontal_spacing_meters):
+    """Créer un mur rideau sur une courbe donnée avec gestion des espacements."""
     try:
         base_curve = convert_curve_to_line(curve)
         if base_curve:
             if isinstance(base_curve, Line):
                 if base_curve.Length >= 0.01:  # Vérifier que la longueur de la ligne est suffisante
-                    Wall.Create(doc, base_curve, curtain_wall_type_id, level_id, height_meters, 0, False, True)
-                    # Appliquer l'espacement vertical et horizontal ici si nécessaire
+                    wall = Wall.Create(doc, base_curve, curtain_wall_type_id, level_id, height_meters, 0, False, True)
+
+                    # Appliquer l'espacement vertical et horizontal
+                    # Ici, vous pouvez utiliser vos paramètres pour gérer l'espacement
+                    if wall:
+                        # Exemple de réglage de l'espacement vertical
+                        vertical_spacing_param = wall.LookupParameter("Vertical Spacing")
+                        if vertical_spacing_param and vertical_spacing_param.HasValue:
+                            vertical_spacing_param.Set(vertical_spacing_meters)  # Définir l'espacement vertical
+                            print("Vertical spacing set to:", vertical_spacing_meters)
+                        else:
+                            print("Vertical spacing parameter not found or is not valid.")
+
+                        # Exemple de réglage de l'espacement horizontal
+                        horizontal_spacing_param = wall.LookupParameter("Horizontal Spacing")
+                        if horizontal_spacing_param and horizontal_spacing_param.HasValue:
+                            horizontal_spacing_param.Set(horizontal_spacing_meters)  # Définir l'espacement horizontal
+                            print("Horizontal spacing set to:", horizontal_spacing_meters)
+                        else:
+                            print("Horizontal spacing parameter not found or is not valid.")
+                    else:
+                        print("Failed to create the wall.")
                 else:
                     print("The line length is too short to create a wall. Ignore this line.")
             else:
@@ -88,6 +113,7 @@ def process_edge(curve, curtain_wall_type_id, level_id, height_meters, vertical_
             print("The curve is invalid or cannot be converted to a line.")
     except Exception as e:
         print("Error while processing edge : {}".format(e))
+
 
 class VerticalFaceSelectionFilter(ISelectionFilter):
     def AllowElement(self, element):

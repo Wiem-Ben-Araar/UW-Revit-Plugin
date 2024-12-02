@@ -1,9 +1,1 @@
-Profile Name|X Position (mm)|Y Position (mm)|Z Position (mm)|Distance Between Profiles (mm)
-PROFILE_STR_152_H|0.0|0.0|1100.0|500
-PROFILE_STR_152_H|0.0|0.0|1600.0|500
-PROFILE_STR_152_H|0.0|0.0|2100.0|500
-PROFILE_PLN_225_H|100.0|0.0|0.0|100
-PROFILE_PLN_225_H|200.0|0.0|0.0|100
-PROFILE_PLN_225_H|300.0|0.0|0.0|100
-PROFILE_PLN_225_H|400.0|0.0|0.0|100
-PROFILE_PLN_225_H|500.00000000000006|0.0|0.0|100
+Profile Name|X Position (mm)|Y Position (mm)|Z Position (mm)|Distance Between Profiles (mm)
