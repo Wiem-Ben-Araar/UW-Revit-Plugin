@@ -42,6 +42,35 @@ def get_panel_types(doc, element):
             result[display_name] = panel_type
     return result
 
+def update_panel_parameters(element):
+    """Met à jour les paramètres 'H_PANNEAU' et 'L_PANNEAU' en fonction de la hauteur et de la largeur du panneau."""
+    # Récupérer la hauteur (paramètre d'instance)
+    height_param = element.LookupParameter("Hauteur")
+    width_param = element.LookupParameter("Largeur")
+
+    if height_param and width_param:
+        height_value = height_param.AsDouble()  # La hauteur est souvent stockée en pieds
+        width_value = width_param.AsDouble()  # La largeur est souvent stockée en pieds
+
+        # Essayer de récupérer les paramètres d'occurrence "H_PANNEAU" et "L_PANNEAU"
+        h_panneau_param = element.LookupParameter("H_PANNEAU")
+        l_panneau_param = element.LookupParameter("L_PANNEAU")
+
+        if h_panneau_param and l_panneau_param:
+            # Commencez une transaction pour effectuer les modifications
+            with Transaction(doc, "Change H_PANNEAU and L_PANNEAU parameters") as t:
+                t.Start()
+
+                # Modifier les paramètres d'occurrence
+                h_panneau_param.Set(height_value)
+                l_panneau_param.Set(width_value)
+
+                t.Commit()
+
+        else:
+            TaskDialog.Show("Error", "The instance parameters 'H_PANNEAU' or 'L_PANNEAU' were not found for the selected element.")
+    else:
+        TaskDialog.Show("Error", "The 'Height' or 'Width' parameter was not found for the selected element.")
 
 try:
     # Sélectionner un panneau de mur-rideau
@@ -78,7 +107,8 @@ try:
 
             t.Commit()
 
-
+        # Mettre à jour les paramètres d'occurrence 'H_PANNEAU' et 'L_PANNEAU'
+        update_panel_parameters(element)
     else:
         TaskDialog.Show("Cancel", "No panel type selected.")
 
