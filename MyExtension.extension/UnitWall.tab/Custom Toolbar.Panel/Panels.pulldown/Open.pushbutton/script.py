@@ -410,11 +410,7 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
                             family_instance = family_doc.FamilyCreate.NewFamilyInstance(
                                 insertion_point, profile_symbol, StructuralType.NonStructural
                             )
-                            if family_instance:
-                                TaskDialog.Show("Succès",
-                                                "Instance créée à la position X: {insertion_point_x_ft:.2f} pieds.")
-                            else:
-                                TaskDialog.Show("Erreur", "Échec de la création de l'instance de famille.")
+
                         else:
                             TaskDialog.Show("Erreur", "Document de la famille invalide.")
                     except Exception as e:

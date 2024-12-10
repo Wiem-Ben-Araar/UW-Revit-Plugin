@@ -17,6 +17,7 @@ Author: Wiem Ben Araar
 import clr
 import traceback
 import os
+import csv
 from Autodesk.Revit.DB import *
 from Autodesk.Revit.UI import TaskDialog
 from pyrevit import revit, DB, forms
@@ -31,6 +32,43 @@ from Autodesk.Revit.UI import TaskDialog
 
 
 
+# Définir un répertoire relatif ou le dossier de l'utilisateur pour le fichier CSV
+csv_directory = os.path.join(os.path.expanduser("~"), "Desktop", "PyRevit", "MyExtension.extension")
+
+# Créer le répertoire seulement s'il n'existe pas déjà
+if not os.path.exists(csv_directory):
+    os.makedirs(csv_directory)
+
+csv_file = os.path.join(csv_directory, "profiles_data.csv")
+
+# En-têtes du fichier CSV
+headers = ["Profile Name", "X Position (mm)", "Y Position (mm)", "Z Position (mm)", "Distance Between Profiles (mm)"]
+
+# Création du fichier CSV vide avec les en-têtes
+def create_csv_with_headers():
+    """Crée un fichier CSV avec des en-têtes si le fichier n'existe pas déjà."""
+    if not os.path.exists(csv_file):  # Vérifier si le fichier existe déjà
+        try:
+            with open(csv_file, mode="w") as file:  # 'w' pour écrire et créer le fichier
+                writer = csv.writer(file, delimiter='|')  # Utiliser une tabulation comme séparateur
+                writer.writerow(headers)  # Écrire les en-têtes dans le fichier CSV
+            print("Le fichier {} a été créé avec succès avec les en-têtes.".format(csv_file))
+        except Exception as e:
+            print("Error creating CSV file: {}".format(e))
+
+# Appel de la fonction pour créer le fichier CSV
+create_csv_with_headers()
+
+# Fonction pour sauvegarder les informations dans le fichier CSV
+def save_to_csv(profile_name, insertion_point_x, insertion_point_y, insertion_point_z, distance):
+    """Sauvegarde les informations des profils dans un fichier CSV."""
+    try:
+        with open(csv_file, mode="a") as file:  # 'a' pour ajouter à la fin du fichier
+            writer = csv.writer(file, delimiter='|')  # Utiliser une tabulation comme séparateur
+            # Écrire chaque valeur dans sa propre colonne
+            writer.writerow([profile_name, insertion_point_x, insertion_point_y, insertion_point_z, distance])
+    except Exception as e:
+        TaskDialog.Show("Error", "Error while saving to CSV file: {}".format(e))
 def select_panel():
     """Sélectionne un panneau de mur rideau dans le projet."""
     try:
@@ -78,7 +116,7 @@ def select_profile_symbol(family_doc):
     """Permet à l'utilisateur de sélectionner un symbole de profil disponible dans l'éditeur de famille."""
     try:
         collector = FilteredElementCollector(family_doc).OfClass(FamilySymbol)
-        profiles = {f.Id: f for f in collector if "STR" in f.Family.Name}
+        profiles = {f.Id: f for f in collector if "STR" in f.Family.Name and "WIN" not in f.Family.Name }
 
         if not profiles:
             forms.alert("No family profiles found.", exitscript=True)
@@ -255,7 +293,9 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
                 # Insertion à la position ajustée
                 insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
                 family_instance = family_doc.FamilyCreate.NewFamilyInstance(insertion_point, profile_symbol, StructuralType.NonStructural)
-
+                # Sauvegarder les informations dans le fichier CSV
+                save_to_csv(profile_symbol.Family.Name, insertion_point_x_ft * 304.8, insertion_point_y_ft * 304.8,
+                            insertion_point_z_ft * 304.8, distance_mm)
 
 
 
@@ -283,7 +323,9 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
                     insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
                     family_instance = family_doc.FamilyCreate.NewFamilyInstance(insertion_point, profile_symbol,
                                                                                 StructuralType.NonStructural)
-
+                    # Sauvegarder les informations dans le fichier CSV
+                    save_to_csv(profile_symbol.Family.Name, insertion_point_x_ft * 304.8, insertion_point_y_ft * 304.8,
+                                insertion_point_z_ft * 304.8, distance_mm)
 
 
 
