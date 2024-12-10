@@ -1,0 +1,62 @@
+{
+  "name": "MyExtension",
+  "author": "Wiem Ben Araar",
+  "description": "Extension pour la gestion des Walls rideaux.",
+  "version": "1.0",
+  "revit": "2019-2023",
+  "engine": "python",
+  "tab": "UnitWall",
+  "components": [
+    {
+      "name": "Custom Toolbar",
+      "type": "panel",
+      "components": [
+        {
+          "name": "Walls",
+          "type": "pulldown",
+          "components": [
+            {
+              "name": "Inspect Walls",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Inspect Walls.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Inspect Walls.pushbutton/icon.png",
+              "tooltip": "Inspecter et créer des Walls rideaux."
+            }
+          ]
+        },
+        {
+          "name": "Panels",
+          "type": "pulldown",
+          "components": [
+           
+            {
+              "name": "Insert Structure Profile",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile.pushbutton/icon.png",
+              "tooltip": "Insert Structure Profile"
+            },
+            
+            {
+              "name": "Insert Plenum Profile",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile.pushbutton/icon.png",
+              "tooltip": "Insert Plenum Profile"
+            },
+            {
+              "name": "Update Panel Dimensions",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Panel Dimensions.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Update Panel Dimensions.pushbutton/icon.png",
+              "tooltip": "Update Panel Dimensions"
+            },
+            {
+              "name": "Change Panel Type",
+              "script": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Change Panel Type.pushbutton/script.py",
+              "icon": "UnitWall.tab/Custom Toolbar.Panel/Panels.pulldown/Change Panel Type.pushbutton/icon.png",
+              "tooltip": "Change Panel Type"
+            }
+
+          ]
+        }
+      ]
+    }
+  ]
+}
