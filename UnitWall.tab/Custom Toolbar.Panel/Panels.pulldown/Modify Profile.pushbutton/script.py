@@ -1,87 +1,123 @@
 # -*- coding: utf-8 -*-
-import csv
+"""
+Description:
+This script allows adding and modifying structural profiles to a curtain wall panel in Revit.
+
+Version: v3
+Author: Wiem Ben Araar, Amira Dridi
+"""
+
+import clr
 import traceback
-from pyrevit import forms, revit
-from Autodesk.Revit.DB import IFamilyLoadOptions
-from Autodesk.Revit.DB import FilteredElementCollector, BuiltInCategory
-# Fonction pour afficher le contenu du fichier CSV
-def afficher_donnees_csv(fichier_csv):
-    """Affiche le contenu du fichier CSV et le retourne sous forme de liste."""
+import os
+import csv
+from Autodesk.Revit.DB import *
+from Autodesk.Revit.UI import TaskDialog
+from pyrevit import revit, DB, forms
+from Autodesk.Revit.UI.Selection import ObjectType
+from Autodesk.Revit.DB.Structure import StructuralType
+
+clr.AddReference('System.Windows.Forms')
+
+# Définir un répertoire relatif ou le dossier de l'utilisateur pour le fichier CSV
+csv_directory = os.path.join(os.path.expanduser("~"), "Desktop", "PyRevit", "MyExtension.extension")
+
+# Créer le répertoire seulement s'il n'existe pas déjà
+if not os.path.exists(csv_directory):
+    os.makedirs(csv_directory)
+
+csv_file = os.path.join(csv_directory, "profiles_data.csv")
+
+# En-têtes du fichier CSV
+headers = ["Profile Name", "X Position (mm)", "Y Position (mm)", "Z Position (mm)", "Distance Between Profiles (mm)"]
+
+# Création du fichier CSV vide avec les en-têtes
+def create_csv_with_headers():
+    """Crée un fichier CSV avec des en-têtes si le fichier n'existe pas déjà."""
+    if not os.path.exists(csv_file):  # Vérifier si le fichier existe déjà
+        try:
+            with open(csv_file, mode="w") as file:  # 'w' pour écrire et créer le fichier
+                writer = csv.writer(file, delimiter='|')  # Utiliser une tabulation comme séparateur
+                writer.writerow(headers)  # Écrire les en-têtes dans le fichier CSV
+            print("Le fichier {} a été créé avec succès avec les en-têtes.".format(csv_file))
+        except Exception as e:
+            print("Error creating CSV file: {}".format(e))
+
+# Appel de la fonction pour créer le fichier CSV
+create_csv_with_headers()
+
+# Fonction pour sauvegarder les informations dans le fichier CSV
+def save_to_csv(profile_name, insertion_point_x, insertion_point_y, insertion_point_z, distance):
+    """Sauvegarde les informations des profils dans un fichier CSV."""
     try:
-        with open(fichier_csv, 'r') as csvfile:
-            reader = csv.reader(csvfile)
-            donnees = list(reader)
-            for i, ligne in enumerate(donnees):
-                print("Ligne {}: {}".format(i, ligne))
-        return donnees
+        with open(csv_file, mode="a") as file:  # 'a' pour ajouter à la fin du fichier
+            writer = csv.writer(file, delimiter='|')  # Utiliser une tabulation comme séparateur
+            # Écrire chaque valeur dans sa propre colonne
+            writer.writerow([profile_name, insertion_point_x, insertion_point_y, insertion_point_z, distance])
     except Exception as e:
-        print("Erreur lors de la lecture du fichier CSV: {}".format(e))
-        return []
-
-
-# Fonction pour modifier une ligne spécifique du fichier CSV
-def modifier_donnees_csv(donnees, index, nouvelles_valeurs):
-    """Modifie une ligne spécifique dans les données tout en gardant le nom du profil."""
-    if 0 < index < len(donnees):  # Commencer à l'index 1 pour éviter l'en-tête
-        print("Avant modification: {}".format(donnees[index]))
-        # Garder le nom du profil intact
-        nom_profil = donnees[index][0]
-        # Mettre à jour les autres valeurs
-        donnees[index] = [nom_profil] + nouvelles_valeurs  # Conserve le nom du profil
-        print("Après modification: {}".format(donnees[index]))
-        return donnees
-    else:
-        print("Index invalide. Modification non effectuée.")
-        return donnees
-
-
-
-# Fonction pour sauvegarder les données modifiées dans le fichier CSV
-def sauvegarder_donnees_csv(fichier_csv, donnees):
-    """Sauvegarde les données modifiées dans le fichier CSV."""
+        TaskDialog.Show("Error", "Error while saving to CSV file: {}".format(e))
+# --- Utility Functions ---
+def select_panel():
+    """Select a curtain wall panel in the project."""
     try:
-        with open(fichier_csv, 'w') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerows(donnees)
-        print("Modifications sauvegardées avec succès.")
+        selection = revit.uidoc.Selection
+        picked_ref = selection.PickObject(ObjectType.Element, "Select the curtain wall panel to modify")
+        selected_element = revit.doc.GetElement(picked_ref.ElementId)
+
+        if isinstance(selected_element, FamilyInstance):
+            return selected_element
+        else:
+            TaskDialog.Show("Error", "The selected item is not a curtain wall panel.")
+            return None
     except Exception as e:
-        print("Erreur lors de la sauvegarde du fichier CSV: {}".format(e))
+        TaskDialog.Show("Error", "An error occurred while selecting the panel: {}".format(e))
+        return None
 
-
-# Fonction pour appliquer les nouvelles valeurs des données du CSV aux éléments dans le projet
-def appliquer_modifications_au_projet(donnees):
-    """Applique les nouvelles valeurs aux éléments dans le projet Revit."""
+def get_panel_length_from_project(panel):
+    """Retrieve the panel length (L_PANNEAU parameter) in mm."""
     try:
-        for index in range(1, len(donnees)):  # Skip header row
-            ligne = donnees[index]
-            profile_name = ligne[0]  # Assuming the profile name is the first column
-            nouvelle_valeur = ligne[1:]  # The new values to apply
-
-            # Find elements based on profile name or another unique identifier
-            # Here, adapt the logic as per your need to find elements.
-            elements = FilteredElementCollector(revit.doc).OfCategory(
-                BuiltInCategory.OST_CurtainWallPanels).WhereElementIsNotElementType().ToElements()
-
-            for element in elements:
-                if element.Name == profile_name:  # Match the profile name
-                    # Assume the parameters correspond to the new values
-                    try:
-                        element.LookupParameter("X Position (mm)").Set(float(nouvelle_valeur[0]))
-                        element.LookupParameter("Y Position (mm)").Set(float(nouvelle_valeur[1]))
-                        element.LookupParameter("Z Position (mm)").Set(float(nouvelle_valeur[2]))
-                        element.LookupParameter("Distance Between Profiles (mm)").Set(float(nouvelle_valeur[3]))
-                        print("Élément '{}' mis à jour avec succès.".format(profile_name))
-                    except Exception as param_error:
-                        print("Erreur lors de la mise à jour des paramètres de l'élément '{}': {}".format(profile_name,
-                                                                                                          param_error))
-                    break  # Break once the profile is found
-            else:
-                print("Aucun élément avec le nom '{}' trouvé.".format(profile_name))
+        length_param = panel.LookupParameter("L_PANNEAU")
+        if length_param:
+            length_value = length_param.AsDouble()  # Feet
+            return length_value * 304.8  # Convert to mm
+        else:
+            TaskDialog.Show("Error", "Parameter 'L_PANNEAU' not found.")
+            return None
     except Exception as e:
-        print("Erreur lors de l'application des modifications: {}\nTraceback: {}".format(e, traceback.format_exc()))
+        TaskDialog.Show("Error", "Error retrieving panel length: {}".format(e))
+        return None
 
+def open_family_in_editor(panel):
+    """Open the selected panel family in the Family Editor."""
+    try:
+        family = panel.Symbol.Family
+        return revit.doc.EditFamily(family)
+    except Exception as e:
+        TaskDialog.Show("Error", "Error opening family in editor: {}".format(e))
+        return None
 
-# Classe pour gérer le chargement de la famille dans le projet
+def select_profile_symbol(family_doc):
+    """Allow user to select a profile symbol from the family."""
+    try:
+        collector = FilteredElementCollector(family_doc).OfClass(FamilySymbol)
+        profiles = {f.Id: f for f in collector if "PROFILE" in f.Family.Name}
+
+        if not profiles:
+            forms.alert("No profile families found.", exitscript=True)
+
+        profile_names = ["{} (ID: {})".format(profile.Family.Name, id) for id, profile in profiles.items()]
+        selected_name = forms.SelectFromList.show(profile_names, title="Select a profile", multiselect=False)
+
+        if not selected_name:
+            forms.alert("No profile selected.", exitscript=True)
+
+        selected_id = next(
+            id for id, profile in profiles.items() if "{} (ID: {})".format(profile.Family.Name, id) == selected_name)
+        return profiles[selected_id]
+    except Exception as e:
+        forms.alert("Error selecting profile symbol: {}\nTraceback: {}".format(e, traceback.format_exc()), exitscript=True)
+
+# --- Add or Modify Profiles ---
 class FamilyLoadOptions(IFamilyLoadOptions):
     def OnFamilyFound(self, familyInUse, overwriteParameterValues):
         overwriteParameterValues.Value = True
@@ -90,7 +126,6 @@ class FamilyLoadOptions(IFamilyLoadOptions):
     def OnSharedFamilyFound(self, sharedFamily, familyInUse, overwriteParameterValues):
         overwriteParameterValues.Value = True
         return True
-
 
 def load_family_back_to_project(family_doc):
     """Charge la famille éditée dans le projet principal."""
@@ -102,49 +137,84 @@ def load_family_back_to_project(family_doc):
 
         with revit.Transaction("Load family into project"):
             if revit.doc.LoadFamily(family_path, familyLoadOptions):
-                forms.alert("La famille a été chargée avec succès dans le projet principal.")
+                forms.alert("The family was successfully loaded into the main project.")
             else:
-                forms.alert("Échec du chargement de la famille dans le projet principal.")
+                forms.alert("Failed to load family into main project.")
     except Exception as e:
-        forms.alert("Erreur lors du chargement de la famille dans le projet: {}\nTraceback : {}".format(e,
-                                                                                                        traceback.format_exc()),
-                    exitscript=True)
+        forms.alert("Error loading family into project: {}\nTraceback : {}".format(e, traceback.format_exc()), exitscript=True)
 
-
-# Chemin du fichier CSV
-fichier_csv = r"C:\Users\wiemb\Desktop\PyRevit\MyExtension.extension\profiles_data.csv"
-
-# Étape 1 : Afficher les données actuelles
-print("Affichage des données actuelles du fichier CSV:")
-donnees = afficher_donnees_csv(fichier_csv)
-
-# Vérification si le fichier contient des données
-if donnees:
-    # Étape 2 : Sélectionner une ligne à modifier
+def add_or_modify_profiles(family_doc, profile_symbol, panel_length_mm, mode="add"):
+    """Add new profiles or modify existing ones."""
     try:
-        index_a_modifier = int(
-            forms.ask_for_string(prompt="Entrez le numéro de la ligne à modifier (1 à {}):".format(len(donnees) - 1),
-                                 title="Ligne à modifier"))
+        num_profiles = int(forms.ask_for_string(prompt="Enter number of profiles:", title="Number of Profiles", default="1"))
+        if num_profiles < 1:
+            forms.alert("The number of profiles must be at least 1.")
+            return
 
-        # Obtenir les nouvelles valeurs pour cette ligne en utilisant une chaîne de caractères
-        nouvelle_valeur = forms.ask_for_string(
-            prompt="Entrez les nouvelles valeurs pour cette ligne (séparées par des virgules):",
-            title="Valeurs à modifier").split(',')
+        distance_mm = float(forms.ask_for_string(prompt="Enter distance between profiles (mm):", title="Distance", default="100"))
+        if distance_mm < 0:
+            forms.alert("Distance cannot be negative.")
+            return
 
-        # Modifier les données si l'index est valide
-        donnees_modifiees = modifier_donnees_csv(donnees, index_a_modifier, nouvelle_valeur)
+        with Transaction(family_doc, "Add or Modify Profiles") as t:
+            t.Start()
+            existing_instances = [el for el in FilteredElementCollector(family_doc).OfClass(FamilyInstance) if el.Symbol.Id == profile_symbol.Id]
+            num_existing = len(existing_instances)
 
-        # Étape 3 : Sauvegarder les modifications
-        sauvegarder_donnees_csv(fichier_csv, donnees_modifiees)
+            for i in range(num_profiles):
+                position_x_mm = distance_mm * i
+                half_panel_length_mm = panel_length_mm / 2
+                insertion_point_x_mm = position_x_mm - half_panel_length_mm
+                insertion_point_x_ft = insertion_point_x_mm / 304.8
+                x_pos = insertion_point_x_ft
+                y_pos, z_pos = 0, 0
 
-        # Étape 4 : Appliquer les modifications aux éléments dans le projet
-        appliquer_modifications_au_projet(donnees_modifiees)
+                if mode == "modify" and i < num_existing:
+                    profile_instance = existing_instances[i]
+                    current_location = profile_instance.Location.Point
+                    new_location = XYZ(x_pos, y_pos / 304.8, z_pos / 304.8)
+                    profile_instance.Location.Move(new_location - current_location)
+                else:
+                    new_location = XYZ(x_pos, y_pos / 304.8, z_pos / 304.8)
+                    family_doc.FamilyCreate.NewFamilyInstance(new_location, profile_symbol, StructuralType.NonStructural)
+                    save_to_csv(profile_symbol.Family.Name, position_x_mm, y_pos, z_pos, distance_mm)
 
-        # Étape 5 : Réafficher les données pour vérifier les modifications
-        print("\nVérification des modifications apportées :")
-        afficher_donnees_csv(fichier_csv)
+            if mode == "modify" and num_profiles < num_existing:
+                for i in range(num_profiles, num_existing):
+                    family_doc.Delete(existing_instances[i].Id)
 
-    except ValueError:
-        print("Entrée invalide. Assurez-vous d'entrer un numéro de ligne valide.")
-else:
-    print("Aucune donnée à modifier dans le fichier CSV.")
+            t.Commit()
+
+        family_doc.Save()
+    except Exception as e:
+        forms.alert("Error in {} profiles: {}\nTraceback: {}".format(mode, e, traceback.format_exc()), exitscript=True)
+
+# --- Main Entry Point ---
+def main():
+    """Main script entry point."""
+    panel = select_panel()
+    if not panel:
+        return
+
+    panel_length_mm = get_panel_length_from_project(panel)
+    if not panel_length_mm:
+        return
+
+    family_doc = open_family_in_editor(panel)
+    if not family_doc:
+        return
+
+    profile_symbol = select_profile_symbol(family_doc)
+    if not profile_symbol:
+        return
+
+    action = forms.alert("Choose action: Add or Modify profiles?", options=["Add", "Modify"])
+    if action == "Add":
+        add_or_modify_profiles(family_doc, profile_symbol, panel_length_mm, mode="add")
+    elif action == "Modify":
+        add_or_modify_profiles(family_doc, profile_symbol, panel_length_mm, mode="modify")
+
+    load_family_back_to_project(family_doc)
+
+# Execute script
+main()

@@ -178,61 +178,8 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
         insertion_point_z_ft = 0
 
         # Conditions spécifiques pour chaque profil
-        if profile_symbol.Family.Name == "PROFILE_PLN_124_V":
-            # Demander à l'utilisateur d'entrer la position X en mm
-            user_input_x_mm = forms.ask_for_string(
-                prompt="Enter the new X position (in mm) for PROFILE_PLN_124_V",
-                title="Value of X"
-            )
-            if user_input_x_mm:
-                try:
-                    position_x_mm = float(user_input_x_mm)
-                    half_panel_length_mm = panel_length_mm / 2
-                    insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                    insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
-                except ValueError:
-                    forms.alert("The value entered for X is not valid. Please enter a number.")
-                    return
-            else:
-                return  # Si aucune entrée, sortir de la fonction
-            insertion_point_y_ft = -168 / 304.8  # Y en bas
-        elif profile_symbol.Family.Name == "PROFILE_PLN_175_V":
-            # Demander à l'utilisateur d'entrer la position X en mm
-            user_input_x_mm = forms.ask_for_string(
-                prompt="Enter the new X position (in mm) for PROFILE_PLN_124_V",
-                title="Value of X"
-            )
-            if user_input_x_mm:
-                try:
-                    position_x_mm = float(user_input_x_mm)
-                    half_panel_length_mm = panel_length_mm / 2
-                    insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                    insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
-                except ValueError:
-                    forms.alert("The value entered for X is not valid. Please enter a number.")
-                    return
-            else:
-                return  # Si aucune entrée, sortir de la fonction
-            insertion_point_y_ft = -193.5 / 304.8  # Y en bas
-        elif profile_symbol.Family.Name == "PROFILE_PLN_225_V":
-            # Demander à l'utilisateur d'entrer la position X en mm
-            user_input_x_mm = forms.ask_for_string(
-                prompt="Enter the new X position (in mm) for PROFILE_PLN_124_V",
-                title="Value of X"
-            )
-            if user_input_x_mm:
-                try:
-                    position_x_mm = float(user_input_x_mm)
-                    half_panel_length_mm = panel_length_mm / 2
-                    insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                    insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
-                except ValueError:
-                    forms.alert("The value entered for X is not valid. Please enter a number.")
-                    return
-            else:
-                return  # Si aucune entrée, sortir de la fonction
-            insertion_point_y_ft = -218.5 / 304.8  # Y en bas
-        elif profile_symbol.Family.Name == "PROFILE_STR_152_V_RENFORT":
+
+        if profile_symbol.Family.Name == "PROFILE_STR_152_V_RENFORT":
             # Demander à l'utilisateur d'entrer la position X en mm
             user_input_x_mm = forms.ask_for_string(
                 prompt="Enter the new X position (in mm) for PROFILE_STR_152_V_RENFORT",
@@ -250,7 +197,7 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
             else:
                 return  # Si aucune entrée, sortir de la fonction
 
-            insertion_point_y_ft = 44 / 304.8  # Décalage Y
+            insertion_point_y_ft = 82 / 304.8  # Décalage Y
         elif profile_symbol.Family.Name == "PROFILE_STR_152_V":
             # Demander à l'utilisateur d'entrer la position X en mm
             user_input_x_mm = forms.ask_for_string(
@@ -263,15 +210,16 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
                     half_panel_length_mm = panel_length_mm / 2
                     insertion_point_x_mm = position_x_mm - half_panel_length_mm
                     insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                    insertion_point_y_ft = 126 / 304.8  # Décalage Y
                 except ValueError:
                     forms.alert("The value entered for X is not valid. Please enter a number.")
                     return
             else:
                 return  # Si aucune entrée, sortir de la fonction
 
-            insertion_point_y_ft = 0 / 304.8  # Décalage YDI
         # Demander la valeur de Z pour les profils appropriés
         if profile_symbol.Family.Name in ["PROFILE_STR_152_H", "PROFILE_STR_152_H_DOUBLE"]:
+            insertion_point_y_ft = 126 / 304.8  # Décalage Y
             user_input_z_mm = forms.ask_for_string(
                 prompt="Enter the Z value (in mm) for {}".format(profile_symbol.Family.Name),
                 title="Value of Z"
