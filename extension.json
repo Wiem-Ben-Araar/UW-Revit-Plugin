@@ -29,10 +29,10 @@
           "components": [
            
             {
-              "name": "Insert Structure Profile",
-              "script": "UnitiWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile.pushbutton/script.py",
-              "icon": "UnitiWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile.pushbutton/icon.png",
-              "tooltip": "Insert Structure Profile"
+              "name": "Insert Structure Profile openning",
+              "script": "UnitiWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile - Openning.pushbutton.pushbutton/script.py",
+              "icon": "UnitiWall.tab/Custom Toolbar.Panel/Panels.pulldown/Insert Structure Profile - Openning.pushbutton/icon.png",
+              "tooltip": "Insert Structure Profile openning"
             },
             
             {
@@ -40,6 +40,12 @@
               "script": "UnitiWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile.pushbutton/script.py",
               "icon": "UnitiWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile.pushbutton/icon.png",
               "tooltip": "Insert Plenum Profile"
+            },
+            {
+              "name": "Insert Plenum Profile openning",
+              "script": "UnitiWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile - Openning.pushbutton/script.py",
+              "icon": "UnitiWall.tab/Custom Toolbar.Panel/Walls.pulldown/Insert Plenum Profile - Openning.pushbutton/icon.png",
+              "tooltip": "Insert Plenum Profile openning"
             },
             {
               "name": "Update Panel Dimensions",
