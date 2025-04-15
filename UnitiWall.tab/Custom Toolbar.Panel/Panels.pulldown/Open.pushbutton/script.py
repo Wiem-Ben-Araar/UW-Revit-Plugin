@@ -1,16 +1,24 @@
 #' -*- coding: utf-8 -*-
 """
 Description:
-This script allows adding profiles, including a plenum profile, to a curtain wall panel in Revit.
+This script is designed to facilitate the addition of profiles, including a plenum profile, to a curtain wall panel in Autodesk Revit. It provides a user-friendly interface for selecting panels, specifying the number of profiles, and defining the distance between them. The script also allows for the modification of panel parameters and the duplication of families before applying changes.
 
-How to use:
-1. Select a panel: The user selects a curtain wall panel from the project.
-2. Choose the number of profiles to create: The user specifies how many profiles, including the plenum profile, they want to add to the panel.
-3. Insert the distance between profiles: The user inputs the desired distance between each profile.
+Key Features:
+- **Panel Selection**: Users can select a curtain wall panel from the project.
+- **Profile Addition**: Users can specify the number of profiles to add, and define the distance between them.
+- **Parameter Modification**: Users can modify existing parameters of the opening.
+- **Family Duplication**: The script offers the option to duplicate the panel's family before making modifications, ensuring the original family remains unchanged.
 
+How to Use:
+1. **Select a Panel**: The user selects a curtain wall panel from the project.
+2. **Choose Action**: The user can choose to either modify the panel's parameters or insert profiles.
+3. **Modify Position & Dimensions**: If modifying parameters, the user can adjust values such as L_WINDOW, LEFT, SILL, and H_WINDOW, with values displayed in millimeters.
+4. **Insert Profiles**: If inserting profiles, the user specifies the number of profiles and the distance between them. The script ensures that the profiles fit within the panel's dimensions.
+5. **Family Duplication**: Optionally, the user can duplicate the panel's family before making changes, preserving the original family.
+6. **Apply Changes**: The script applies the changes and reloads the modified family into the project.
 
-Version: v2
-Author: Wiem BEN ARAAR, Amira DRIDI
+Version: v3
+Author: Wiem Ben Araar, Amira Dridi
 """
 import clr
 import traceback
@@ -31,50 +39,50 @@ from Autodesk.Revit.UI import TaskDialog
 
 
 def get_existing_parameters(panel):
-    """Récupère les paramètres existants d'un panneau de mur rideau et les convertit en millimètres."""
+    """Retrieves the existing parameters of a curtain wall panel and converts them to millimeters."""
     try:
-        # Dictionnaire pour stocker les paramètres
+        # Dictionary to store the parameters
         parameters = {}
         panel_type = revit.doc.GetElement(panel.GetTypeId())
-        # Récupérer les paramètres spécifiques
+        # Retrieve specific parameters
         parameters['L_WINDOW'] = panel.LookupParameter("L_WINDOW")
         parameters['LEFT'] = panel.LookupParameter("LEFT")
         parameters['SILL'] = panel.LookupParameter("SILL")
         parameters['H_WINDOW'] = panel.LookupParameter("H_WINDOW")
 
-        # Vérifier si les paramètres existent
+        # Check if the parameters exist
         for param_name, param in parameters.items():
             if param is None:
-                TaskDialog.Show("Erreur", "Le paramètre '{}' n'existe pas dans l'élément sélectionné.".format(param_name))
+                TaskDialog.Show("Error", "The parameter '{}' does not exist in the selected element.".format(param_name))
                 return None
 
-        # Convertir les valeurs en millimètres
+        # Convert the values to millimeters
         parameters_mm = {}
         for param_name, param in parameters.items():
             if param.StorageType == StorageType.Double:
-                value_feet = param.AsDouble()  # Valeur en pieds
-                value_mm = value_feet * 304.8  # Conversion en millimètres
+                value_feet = param.AsDouble()  # Value in feet
+                value_mm = value_feet * 304.8  # Conversion to millimeters
                 parameters_mm[param_name] = value_mm
             else:
-                parameters_mm[param_name] = param.AsValueString()  # Conserver les autres types de paramètres (string, etc.)
+                parameters_mm[param_name] = param.AsValueString()  # Keep other types of parameters (string, etc.)
 
         return parameters, parameters_mm
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Erreur lors de la récupération des paramètres : {}".format(str(e)))
+        TaskDialog.Show("Error", "Error retrieving parameters: {}".format(str(e)))
         return None, None
 
 def modify_parameters_ui(parameters_mm):
-    """Affiche une interface utilisateur pour modifier les paramètres (en millimètres)."""
+    """Displays a user interface to modify the parameters (in millimeters)."""
     try:
-        # Créer un dictionnaire pour stocker les nouvelles valeurs
+        # Create a dictionary to store the new values
         new_values = {}
 
-        # Afficher une boîte de dialogue pour chaque paramètre
+        # Display a dialog box for each parameter
         for param_name, current_value in parameters_mm.items():
             new_value = forms.ask_for_string(
-                prompt="Modifier la valeur de '{}' (actuelle : {} mm):".format(param_name, current_value),
-                title="Modifier {}".format(param_name),
+                prompt="Modify the value of '{}' (current: {} mm):".format(param_name, current_value),
+                title="Modify {}".format(param_name),
                 default=str(current_value)
             )
 
@@ -84,587 +92,523 @@ def modify_parameters_ui(parameters_mm):
         return new_values
 
     except Exception as e:
-        forms.alert("Erreur lors de la modification des paramètres : {}".format(str(e)))
+        forms.alert("Error modifying parameters: {}".format(str(e)))
         return None
 
 def apply_parameter_changes(panel, parameters, new_values):
-    """Applique les nouvelles valeurs aux paramètres de l'élément (en millimètres)."""
+    """Applies the new values to the element's parameters (in millimeters)."""
     try:
-        with Transaction(revit.doc, "Modifier les paramètres") as t:
+        with Transaction(revit.doc, "Modify Position & Dimensions") as t:
             t.Start()
 
             for param_name, new_value in new_values.items():
-                param = parameters[param_name]  # Accéder à l'objet Parameter
+                param = parameters[param_name]  # Access the Parameter object
 
-                # Convertir la nouvelle valeur en fonction du type de paramètre
+                # Convert the new value based on the parameter type
                 if param.StorageType == StorageType.String:
                     param.Set(new_value)
                 elif param.StorageType == StorageType.Double:
-                    # Convertir la valeur de millimètres en pieds
+                    # Convert the value from millimeters to feet
                     value_mm = float(new_value)
-                    value_feet = value_mm / 304.8  # Conversion en pieds
+                    value_feet = value_mm / 304.8  # Conversion to feet
                     param.Set(value_feet)
                 elif param.StorageType == StorageType.Integer:
                     param.Set(int(new_value))
 
             t.Commit()
 
-        TaskDialog.Show("Succès", "Les paramètres ont été modifiés avec succès.")
+        TaskDialog.Show("Success", "The parameters have been successfully modified.")
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Erreur lors de la modification des paramètres : {}".format(str(e)))
+        TaskDialog.Show("Error", "Error modifying parameters: {}".format(str(e)))
+
 
 
 def add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm):
-    """Ajoute plusieurs instances du profil sélectionné à la famille avec une position spécifique, en tenant compte de la largeur du panneau."""
+    """Adds multiple instances of the selected profile to the family at a specific position, taking into account the panel width."""
     try:
-        # Position initiale
+        # Initial position
         insertion_point_x_ft = 0
         insertion_point_y_ft = 0
         insertion_point_z_ft = 0
 
-        # Récupérer les valeurs de SILL et LINTEL pour les contraintes de Z
+        # Retrieve the SILL and LINTEL values for the Z constraints
         panel = select_panel()
         if not panel:
-            TaskDialog.Show("Erreur", "Aucun panneau sélectionné.")
+            TaskDialog.Show("Error", "No panel selected.")
             return
 
         sill_param = panel.LookupParameter("SILL")
-        right_param =panel.LookupParameter("RIGHT")
+        right_param = panel.LookupParameter("RIGHT")
         lintel_param = panel.LookupParameter("LINTEL")
         left_param = panel.LookupParameter("LEFT")
         l_window_param = panel.LookupParameter("L_WINDOW")
 
         if not sill_param or not lintel_param or not left_param or not l_window_param:
-            TaskDialog.Show("Erreur",
-                            "Les paramètres SILL, LINTEL, LEFT ou L_WINDOW sont introuvables dans le panneau.")
+            TaskDialog.Show("Error", "The parameters SILL, LINTEL, LEFT or L_WINDOW could not be found in the panel.")
             return
 
-        sill_value_ft = sill_param.AsDouble()  # Valeur de SILL en pieds
+        sill_value_ft = sill_param.AsDouble()  # SILL value in feet
         right_value_ft = right_param.AsDouble()
-        lintel_value_ft = lintel_param.AsDouble()  # Valeur de LINTEL en pieds
-        left_value_ft = left_param.AsDouble()  # Valeur de LEFT en pieds
-        l_window_value_ft = l_window_param.AsDouble()  # Valeur de L_WINDOW en pieds
+        lintel_value_ft = lintel_param.AsDouble()  # LINTEL value in feet
+        left_value_ft = left_param.AsDouble()  # LEFT value in feet
+        l_window_value_ft = l_window_param.AsDouble()  # L_WINDOW value in feet
 
-
-        # Convertir LEFT et L_WINDOW en millimètres pour l'affichage
+        # Convert LEFT and L_WINDOW to millimeters for display
         left_value_mm = left_value_ft * 304.8
         l_window_value_mm = l_window_value_ft * 304.8
         right_value_mm = right_value_ft * 304.8
 
-
-
-
         if profile_symbol.Family.Name == "PROFILE_PLN_124_V_WIN_UP":
             panel = select_panel()
             if panel:
-                # Récupérer le paramètre LINTEL pour la hauteur
+                # Retrieve the LINTEL parameter for the height
                 panel_height_param = panel.LookupParameter("LINTEL")
                 if panel_height_param:
-                    lintel_value_ft = panel_height_param.AsDouble()  # En pieds
+                    lintel_value_ft = panel_height_param.AsDouble()  # In feet
                     insertion_point_y_ft = 294 / 304.8
                     insertion_point_z_ft = lintel_value_ft
 
-
         elif profile_symbol.Family.Name == "PROFILE_STR_152_V_WIN_UP":
-            # Sélectionner le panneau
+            # Select the panel
             panel = select_panel()
 
             if panel is None:
-                TaskDialog.Show("Erreur", "Aucun panneau sélectionné.")
+                TaskDialog.Show("Error", "No panel selected.")
             else:
-
-                # Récupérer la valeur du paramètre LINTEL pour définir Z
-                panel_height_param = panel.LookupParameter(
-                    "LINTEL")  # Assurez-vous que panel est défini et que ce paramètre existe
-
+                # Retrieve the LINTEL parameter value to set Z (ensure the panel is defined and the parameter exists)
+                panel_height_param = panel.LookupParameter("LINTEL")
                 if panel_height_param:
-                    # Récupérer la valeur de LINTEL en pieds (ou unités internes si nécessaire)
+                    # Get the LINTEL value in feet (or internal units as needed)
                     lintel_value_ft = panel_height_param.AsDouble()
 
-
-                    # Calculer la position Z en pieds (utilisation directe de LINTEL)
-                    insertion_point_z_ft = lintel_value_ft  # Utilisation de LINTEL pour la position Z
-                    insertion_point_y_ft = 126 / 304.8  # Décalage Y
-
+                    # Calculate the Z position in feet (using LINTEL directly)
+                    insertion_point_z_ft = lintel_value_ft  # Using LINTEL for the Z position
+                    insertion_point_y_ft = 126 / 304.8  # Y offset
                 else:
-                    TaskDialog.Show("Erreur", "Le paramètre LINTEL n'a pas pu être récupéré.")
+                    TaskDialog.Show("Error", "The LINTEL parameter could not be retrieved.")
 
         elif profile_symbol.Family.Name == "PROFILE_PLN_124_V_WIN_DOWN":
-            # Calculer l'élévation Y en pieds (convertir 168 mm en pieds)
-            insertion_point_y_ft = 294 / 304.8  # 168 mm converti en pieds
-
+            # Calculate the Y elevation in feet (convert 168 mm to feet)
+            insertion_point_y_ft = 294 / 304.8  # 168 mm converted to feet
 
         elif profile_symbol.Family.Name == "PROFILE_STR_152_V_WIN_DOWN":
-
             height_param = profile_symbol.LookupParameter("H_STR_152")
             if height_param and not height_param.IsReadOnly:
                 height_param.Set("SILL")
-
+            insertion_point_y_ft = 126 / 304.8  # Y offset
         elif profile_symbol.Family.Name == "PROFILE_PLN_124_H_WIN_LEFT":
+            panel = select_panel()
 
-            panel=select_panel()
-
-            # Récupérer la valeur de LEFT pour définir la position du profil
-
+            # Retrieve the LEFT value to set the profile position
             left_param = panel.LookupParameter("LEFT")
 
-            largeur_param = profile_symbol.LookupParameter("L_STR_152_WIN_LEFT")  # Paramètre de largeur à modifier
+            largeur_param = profile_symbol.LookupParameter("L_STR_152_WIN_LEFT")  # Width parameter to modify
 
             if left_param and left_param.HasValue:
-
-                left_value = left_param.AsDouble()  # Récupère la valeur actuelle de LEFT en pieds
-
+                left_value = left_param.AsDouble()  # Get the current LEFT value in feet
             else:
+                TaskDialog.Show("Error", "The LEFT parameter is not found or has no value.")
 
-                TaskDialog.Show("Erreur", "Le paramètre LEFT est introuvable ou sans valeur.")
-
-            # Récupérer la longueur (largeur) du panneau en millimètres
-
+            # Retrieve the panel length (width) in millimeters
             panel_length_param = panel.LookupParameter("Largeur")
-
             if panel_length_param and panel_length_param.HasValue:
+                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convert length from feet to millimeters
 
-                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convertir la longueur de pieds à millimètres
-
-
-
-                # Calcul de la moitié de la longueur du panneau et de la position basée sur LEFT
-
+                # Calculate half the panel length and the position based on LEFT
                 half_panel_length_mm = panel_length_mm / 2
+                half_left_value_mm = left_value * 304.8 / 2  # Convert LEFT to millimeters and divide by 2
 
-                half_left_value_mm = left_value * 304.8 / 2  # Convertir LEFT en millimètres et diviser par 2
-
-                # Calculer la position X pour le profil en partant du centre du panneau
-
+                # Calculate the X position for the profile starting from the center of the panel
                 insertion_point_x_mm = half_panel_length_mm - half_left_value_mm
-
-                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion en pieds
-
-                insertion_point_y_ft = 294 / 304.8  # Conversion de 168 mm en pieds
-
-
-
+                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion to feet
+                insertion_point_y_ft = 294 / 304.8  # Conversion from 168 mm to feet
             else:
-
-                TaskDialog.Show("Erreur", "Le paramètre Largeur est introuvable ou sans valeur.")
+                TaskDialog.Show("Error", "The 'Width' parameter is not found or has no value.")
 
         elif profile_symbol.Family.Name == "PROFILE_STR_152_H_WIN_LEFT":
-            panel=select_panel()
+            panel = select_panel()
 
-            # Récupérer la valeur de LEFT pour définir la position du profil
+            # Retrieve the LEFT value to set the profile position
             left_param = panel.LookupParameter("LEFT")
-            largeur_param = profile_symbol.LookupParameter("L_STR_152_WIN_LEFT")  # Paramètre de largeur à modifier
+            largeur_param = profile_symbol.LookupParameter("L_STR_152_WIN_LEFT")  # Width parameter to modify
 
             if left_param and left_param.HasValue:
-                left_value = left_param.AsDouble()  # Récupère la valeur actuelle de LEFT en pieds
-
-
-
+                left_value = left_param.AsDouble()  # Get the current LEFT value in feet
             else:
-                TaskDialog.Show("Erreur", "Le paramètre LEFT est introuvable ou sans valeur.")
+                TaskDialog.Show("Error", "The LEFT parameter is not found or has no value.")
 
-            # Récupérer la longueur (largeur) du panneau en millimètres
+            # Retrieve the panel length (width) in millimeters
             panel_length_param = panel.LookupParameter("Largeur")
             if panel_length_param and panel_length_param.HasValue:
-                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convertir la longueur de pieds à millimètres
+                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convert length from feet to millimeters
 
-
-                # Calcul de la moitié de la longueur du panneau et de la position basée sur LEFT
+                # Calculate half the panel length and the position based on LEFT
                 half_panel_length_mm = panel_length_mm / 2
-                half_left_value_mm = left_value * 304.8 / 2  # Convertir LEFT en millimètres et diviser par 2
+                half_left_value_mm = left_value * 304.8 / 2  # Convert LEFT to millimeters and divide by 2
 
-                # Calculer la position X pour le profil en partant du centre du panneau
+                # Calculate the X position for the profile starting from the center of the panel
                 insertion_point_x_mm = half_panel_length_mm - half_left_value_mm
-                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion en pieds
-                insertion_point_y_ft = 126 / 304.8  # Conversion de 168 mm en pieds
-
-
-
+                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion to feet
+                insertion_point_y_ft = 126 / 304.8  # Conversion from 168 mm to feet
             else:
-                TaskDialog.Show("Erreur", "Le paramètre Largeur est introuvable ou sans valeur.")
+                TaskDialog.Show("Error", "The 'Width' parameter is not found or has no value.")
 
         elif profile_symbol.Family.Name == "PROFILE_PLN_124_H_WIN_RIGHT":
             panel = select_panel()
 
-            # Récupérer la valeur du paramètre RIGHT depuis le panneau
+            # Retrieve the RIGHT parameter value from the panel
             right_value_param = panel.LookupParameter("RIGHT")
-
             if right_value_param and right_value_param.HasValue:
-                # Convertir la valeur de `RIGHT` en pieds
+                # Convert the RIGHT value to feet
                 right_value = right_value_param.AsDouble()
             else:
-                TaskDialog.Show("Erreur", "Le paramètre 'RIGHT' est introuvable ou sans valeur dans le panneau.")
-                return  # Sortir si `RIGHT` est manquant pour éviter des erreurs
+                TaskDialog.Show("Error", "The 'RIGHT' parameter is not found or has no value in the panel.")
+                return  # Exit if RIGHT is missing to avoid errors
 
-            # Ouvrir la famille dans l'éditeur pour modifier le paramètre `L_STR_152_WIN_RIGHT`
+            # Open the family in the editor to modify the parameter 'L_STR_152_WIN_RIGHT'
             family_doc = open_family_in_editor(panel)
-
             if family_doc:
-                # Accéder aux paramètres de la famille
+                # Access the family parameters
                 parameters = family_doc.FamilyManager.Parameters
 
-                # Rechercher le paramètre `L_STR_152_WIN_RIGHT`
+                # Search for the parameter 'L_STR_152_WIN_RIGHT'
                 largeur_param = None
                 for param in parameters:
                     if param.Definition.Name == "L_STR_152_WIN_RIGHT":
                         largeur_param = param
                         break
-
-
             else:
-                TaskDialog.Show("Erreur", "Impossible d'ouvrir la famille dans l'éditeur.")
+                TaskDialog.Show("Error", "Unable to open the family in the editor.")
 
-            # Calculer la position X pour l'insertion basée sur le centre du panneau
+            # Calculate the X position for insertion based on the center of the panel
             panel_length_param = panel.LookupParameter("Largeur")
             if panel_length_param and panel_length_param.HasValue:
-                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convertir la longueur en millimètres
+                panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convert length to millimeters
 
-
-                # Calcul de la moitié de la longueur du panneau et de la position basée sur `RIGHT`
+                # Calculate half the panel length and the position based on RIGHT
                 half_panel_length_mm = panel_length_mm / 2
-                half_right_value_mm = right_value * 304.8 / 2  # Convertir `RIGHT` en millimètres et diviser par 2
+                half_right_value_mm = right_value * 304.8 / 2  # Convert RIGHT to millimeters and divide by 2
 
-                # Calculer la position X pour le profil
+                # Calculate the X position for the profile
                 insertion_point_x_mm = -half_panel_length_mm + half_right_value_mm
-                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion en pieds
-                insertion_point_y_ft = 294 / 304.8  # Conversion de 168 mm en pieds
-
-
+                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion to feet
+                insertion_point_y_ft = 294 / 304.8  # Conversion from 168 mm to feet
             else:
-                TaskDialog.Show("Erreur", "Le paramètre Largeur est introuvable ou sans valeur.")
+                TaskDialog.Show("Error", "The 'Width' parameter is not found or has no value.")
 
-        # Vérifier si le profil correspond à PROFILE_STR_152_H_WIN_RIGHT
+        # Check if the profile corresponds to PROFILE_STR_152_H_WIN_RIGHT
         elif profile_symbol.Family.Name == "PROFILE_STR_152_H_WIN_RIGHT":
             panel = select_panel()
-
             if panel:
-                # Récupérer la valeur du paramètre RIGHT depuis le panneau
+                # Retrieve the RIGHT parameter value from the panel
                 right_value_param = panel.LookupParameter("RIGHT")
                 if right_value_param and right_value_param.HasValue:
-                    # Convertir la valeur de `RIGHT` en pieds
+                    # Convert the RIGHT value to feet
                     right_value = right_value_param.AsDouble()
                 else:
-                    TaskDialog.Show("Erreur", "Le paramètre 'RIGHT' est introuvable ou sans valeur dans le panneau.")
-                    return  # Sortir si `RIGHT` est manquant pour éviter des erreurs
+                    TaskDialog.Show("Error", "The 'RIGHT' parameter is not found or has no value in the panel.")
+                    return  # Exit if RIGHT is missing to avoid errors
 
-                # Ouvrir la famille dans l'éditeur pour modifier le paramètre `L_STR_152_WIN_RIGHT`
+                # Open the family in the editor to modify the parameter 'L_STR_152_WIN_RIGHT'
                 family_doc = open_family_in_editor(panel)
-
                 if family_doc:
-                    # Accéder aux paramètres de la famille
+                    # Access the family parameters
                     parameters = family_doc.FamilyManager.Parameters
 
-                    # Rechercher le paramètre `L_STR_152_WIN_RIGHT`
-                    largeur_param = next(
-                        (param for param in parameters if param.Definition.Name == "L_STR_152_WIN_RIGHT"), None)
-
-
+                    # Search for the parameter 'L_STR_152_WIN_RIGHT'
+                    largeur_param = next((param for param in parameters if param.Definition.Name == "L_STR_152_WIN_RIGHT"), None)
                 else:
-                    TaskDialog.Show("Erreur", "Impossible d'ouvrir la famille dans l'éditeur.")
+                    TaskDialog.Show("Error", "Unable to open the family in the editor.")
 
-                # Calculer la position X pour l'insertion basée sur le centre du panneau
+                # Calculate the X position for insertion based on the center of the panel
                 panel_length_param = panel.LookupParameter("Largeur")
                 if panel_length_param and panel_length_param.HasValue:
-                    panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convertir la longueur en millimètres
+                    panel_length_mm = panel_length_param.AsDouble() * 304.8  # Convert length to millimeters
 
-
-                    # Calcul de la moitié de la longueur du panneau et de la position basée sur `RIGHT`
+                    # Calculate half the panel length and the position based on RIGHT
                     half_panel_length_mm = panel_length_mm / 2
-                    half_right_value_mm = right_value * 304.8 / 2  # Convertir `RIGHT` en millimètres et diviser par 2
+                    half_right_value_mm = right_value * 304.8 / 2  # Convert RIGHT to millimeters and divide by 2
 
-                    # Calculer la position X pour le profil
+                    # Calculate the X position for the profile
                     insertion_point_x_mm = -half_panel_length_mm + half_right_value_mm
-                    insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion en pieds
-                    insertion_point_y_ft = 126 / 304.8  # Conversion de 168 mm en pieds
-
-
+                    insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion to feet
+                    insertion_point_y_ft = 126 / 304.8  # Conversion from 168 mm to feet
                 else:
-                    TaskDialog.Show("Erreur", "Le paramètre 'Largeur' est introuvable ou sans valeur dans le panneau.")
+                    TaskDialog.Show("Error", "The 'Width' parameter is not found or has no value in the panel.")
             else:
-                TaskDialog.Show("Erreur", "Aucun panneau n'a été sélectionné.")
+                TaskDialog.Show("Error", "No panel was selected.")
 
-        # Fonction pour demander la valeur Z en mm pour certains profils
+        # Functionality to request the Z value (in mm) for certain profiles
         if profile_symbol.Family.Name in [
             "PROFILE_PLN_124_H_WIN_LEFT", "PROFILE_PLN_124_H_WIN_RIGHT"
         ]:
             while True:
-                # ✅ Vérifier que z_max_mm est bien supérieur à z_min_mm avant de continuer
-                z_max_mm = (lintel_value_ft * 304.8) - ((num_profiles -1) * distance_mm) - 32
+                # Ensure that z_max_mm is greater than z_min_mm before proceeding
+                z_max_mm = (lintel_value_ft * 304.8) - ((num_profiles - 1) * distance_mm) - 32
                 z_min_mm = (sill_value_ft * 304.8) + 31.5
-
 
                 if z_max_mm < z_min_mm:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour {} profilés avec une distance de {} mm entre eux.\n"
-                        "Veuillez réduire le nombre de profilés ou la distance entre eux.".format(num_profiles,
-                                                                                                  distance_mm)
+                        "Error: The available space is insufficient for {} profiles with a distance of {} mm between them.\n"
+                        "Please reduce the number of profiles or the distance between them.".format(num_profiles, distance_mm)
                     )
-                    # ✅ Permettre à l'utilisateur de modifier les valeurs
+                    # Allow the user to modify the values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # On recalcule avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not wish to enter new values
 
-                # ✅ Demande de la valeur de Z
+                # Request the Z value
                 while True:
                     user_input_z_mm = forms.ask_for_string(
-                        prompt="Entrez la valeur de Z (en mm) pour {} (entre {:.2f} mm et {:.2f} mm) :".format(
+                        prompt="Enter the Z value (in mm) for {} between [{:.2f} , {:.2f}]:".format(
                             profile_symbol.Family.Name, z_min_mm, z_max_mm
                         ),
-                        title="Valeur de Z"
+                        title="Z Value"
                     )
 
                     if not user_input_z_mm:
-                        forms.alert("Aucune valeur n'a été saisie pour Z. Veuillez réessayer.")
-                        continue  #  Redemander la saisie
+                        forms.alert("No value was entered for Z. Please try again.")
+                        continue  # Ask again
 
                     try:
                         insertion_point_z_mm = float(user_input_z_mm)
-                        insertion_point_z_ft = insertion_point_z_mm / 304.8  # Conversion en pieds
+                        insertion_point_z_ft = insertion_point_z_mm / 304.8  # Convert to feet
 
                         if z_min_mm <= insertion_point_z_mm <= z_max_mm:
-                            break  #  Sortir de la boucle si la valeur est correcte
+                            break  # Exit the loop if the value is correct
                         else:
                             forms.alert(
-                                "La valeur de Z doit être comprise entre {:.2f} mm et {:.2f} mm.".format(
-                                    z_min_mm, z_max_mm
-                                )
+                                "The Z value must be between [{:.2f} and {:.2f}].".format(z_min_mm, z_max_mm)
                             )
-
                     except ValueError:
-                        forms.alert("Erreur : La valeur saisie pour Z n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("Error: The value entered for Z is not valid. Please enter a number.")
 
-                break  #  Tout est correct, on sort du while principal
+                break  # Everything is correct, exit the main loop
+
         if profile_symbol.Family.Name in [
             "PROFILE_STR_152_H_WIN_RIGHT", "PROFILE_STR_152_H_WIN_LEFT"
         ]:
             while True:
-                # ✅ Vérifier que z_max_mm est bien supérieur à z_min_mm avant de continuer
+                # Ensure that z_max_mm is greater than z_min_mm before proceeding
                 z_max_mm = (lintel_value_ft * 304.8) - ((num_profiles - 1) * distance_mm) - 32
                 z_min_mm = (sill_value_ft * 304.8) + 32  # Correction
 
                 if z_max_mm < z_min_mm:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour {} profilés avec une distance de {} mm entre eux.\n"
-                        "Veuillez réduire le nombre de profilés ou la distance entre eux.".format(num_profiles,
-                                                                                                  distance_mm)
+                        "Error: The available space is insufficient for {} profiles with a distance of {} mm between them.\n"
+                        "Please reduce the number of profiles or the distance between them.".format(num_profiles, distance_mm)
                     )
-                    # ✅ Permettre à l'utilisateur de modifier les valeurs
+                    # Allow the user to modify the values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # On recalcule avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not wish to enter new values
 
-                # ✅ Demande de la valeur de Z
+                # Request the Z value
                 while True:
                     user_input_z_mm = forms.ask_for_string(
-                        prompt="Entrez la valeur de Z (en mm) pour {} (entre {:.2f} mm et {:.2f} mm) :".format(
+                        prompt="Enter the Z value (in mm) for {} (between {:.2f} mm and {:.2f} mm):".format(
                             profile_symbol.Family.Name, z_min_mm, z_max_mm
                         ),
-                        title="Valeur de Z"
+                        title="Z Value"
                     )
 
                     if not user_input_z_mm:
-                        forms.alert("Aucune valeur n'a été saisie pour Z. Veuillez réessayer.")
-                        continue  # Redemander la saisie
+                        forms.alert("No value was entered for Z. Please try again.")
+                        continue  # Ask again
 
                     try:
                         insertion_point_z_mm = float(user_input_z_mm)
-                        insertion_point_z_ft = insertion_point_z_mm / 304.8  # Conversion en pieds
+                        insertion_point_z_ft = insertion_point_z_mm / 304.8  # Convert to feet
 
                         if z_min_mm <= insertion_point_z_mm <= z_max_mm:
-                            break  # Sortir de la boucle si la valeur est correcte
+                            break  # Exit the loop if the value is correct
                         else:
                             forms.alert(
-                                "La valeur de Z doit être comprise entre {:.2f} mm et {:.2f} mm.".format(
-                                    z_min_mm, z_max_mm
-                                )
+                                "The Z value must be between {:.2f} mm and {:.2f} mm.".format(z_min_mm, z_max_mm)
                             )
-
                     except ValueError:
-                        forms.alert("Erreur : La valeur saisie pour Z n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("Error: The value entered for Z is not valid. Please enter a number.")
 
-                break  # Tout est correct, on sort du while principal
-        # Récupération de la longueur du panneau avant de l'utiliser
+                break  # Everything is correct, exit the main loop
+
+        # Retrieve the panel width before using it
         panel_length_param = panel.LookupParameter("Largeur")
         if panel_length_param and panel_length_param.HasValue:
             panel_length_mm = panel_length_param.AsDouble() * 304.8
         else:
-            forms.alert("Erreur : Impossible de récupérer la largeur du panneau.")
-            return  # Arrêter l'exécution si la largeur du panneau est introuvable
+            forms.alert("Error: Unable to retrieve the panel width.")
+            return  # Stop execution if the panel width is not found
 
-        # Vérification si panel_length_mm est bien défini
-        if profile_symbol.Family.Name in [
-
-            "PROFILE_STR_152_V_WIN_UP", "PROFILE_STR_152_V_WIN_DOWN"
-        ]:
+        # Check if panel_length_mm is properly defined
+        if profile_symbol.Family.Name in ["PROFILE_STR_152_V_WIN_UP", "PROFILE_STR_152_V_WIN_DOWN"]:
             while True:
-                # L'intervalle min correspond bien à la valeur minimale autorisée
+                # The minimum interval corresponds to the allowed minimum value
                 intervalle_min_mm = right_value_mm + 32
-                # L'intervalle max prend en compte le dernier profil et pas d'espace avant le premier
+                # The maximum interval takes into account the last profile and no space before the first
                 intervalle_max_mm = right_value_mm + l_window_value_mm - ((num_profiles - 1) * distance_mm) - 32
-                # Vérification si l'espace est insuffisant
+                # Check if the available space is insufficient
                 if intervalle_max_mm < intervalle_min_mm:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour " + str(num_profiles) +
-                        " profilés avec une distance de " + str(distance_mm) + " mm entre eux.\n" +
-                        "Veuillez réduire le nombre de profilés ou la distance entre eux."
+                        "Error: The available space is insufficient for " + str(num_profiles) +
+                        " profiles with a distance of " + str(distance_mm) + " mm between them.\n" +
+                        "Please reduce the number of profiles or the distance between them."
                     )
-                    # ✅ Permettre à l'utilisateur de modifier les valeurs
+                    # Allow the user to modify the values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # On recalcule avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not wish to enter new values
                 user_input_x_mm = forms.ask_for_string(
-                    prompt="Entrez la valeur de X (en mm) pour " + profile_symbol.Family.Name +
-                           " (entre " + str(round(intervalle_min_mm, 2)) + " mm et " +
-                           str(round(intervalle_max_mm, 2)) + " mm)",
-                    title="Valeur de X"
+                    prompt="Enter the X value (in mm) for " + profile_symbol.Family.Name +
+                           " between [" + str(round(intervalle_min_mm, 2)) + " , " +
+                           str(round(intervalle_max_mm, 2)) + "]",
+                    title="X Value"
                 )
 
                 if user_input_x_mm:
                     try:
                         position_x_mm = float(user_input_x_mm)
 
-                        # Vérification stricte pour inclure la valeur min et max
+                        # Strict check to include the minimum and maximum value
                         if intervalle_min_mm - 1 <= position_x_mm <= intervalle_max_mm:
-                            if panel_length_mm is not None:  # Vérification explicite
+                            if panel_length_mm is not None:  # Explicit check
                                 half_panel_length_mm = panel_length_mm / 2
                                 insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion from mm to feet
                                 break
                             else:
-                                forms.alert("Erreur : panel_length_mm n'est pas défini.")
+                                forms.alert("Error: panel_length_mm is not defined.")
                                 return
                         else:
                             forms.alert(
-                                "La valeur de X doit être comprise entre " +
-                                str(round(intervalle_min_mm, 2)) + " mm et " +
-                                str(round(intervalle_max_mm, 2)) + " mm."
+                                "The X value must be between [" +
+                                str(round(intervalle_min_mm, 2)) + " , " +
+                                str(round(intervalle_max_mm, 2)) + "]"
                             )
                     except ValueError:
-                        forms.alert("La valeur saisie pour X n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("The value entered for X is not valid. Please enter a number.")
                 else:
-                    forms.alert("Aucune valeur n'a été saisie pour X.")
+                    forms.alert("No value was entered for X.")
                     return
-        if profile_symbol.Family.Name in [
-            "PROFILE_PLN_124_V_WIN_UP", "PROFILE_PLN_124_V_WIN_DOWN",
 
-        ]:
+        if profile_symbol.Family.Name in ["PROFILE_PLN_124_V_WIN_UP", "PROFILE_PLN_124_V_WIN_DOWN"]:
             while True:
-                # L'intervalle min correspond bien à la valeur minimale autorisée
+                # The minimum interval corresponds to the allowed minimum value
                 intervalle_min_mm = right_value_mm + 31.5
-                # L'intervalle max prend en compte le dernier profil et pas d'espace avant le premier
+                # The maximum interval takes into account the last profile and no space before the first
                 intervalle_max_mm = right_value_mm + l_window_value_mm - ((num_profiles - 1) * distance_mm) - 32
-                # Vérification si l'espace est insuffisant
+                # Check if the available space is insufficient
                 if intervalle_max_mm < intervalle_min_mm:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour " + str(num_profiles) +
-                        " profilés avec une distance de " + str(distance_mm) + " mm entre eux.\n" +
-                        "Veuillez réduire le nombre de profilés ou la distance entre eux."
+                        "Error: The available space is insufficient for " + str(num_profiles) +
+                        " profiles with a distance of " + str(distance_mm) + " mm between them.\n" +
+                        "Please reduce the number of profiles or the distance between them."
                     )
-                    # ✅ Permettre à l'utilisateur de modifier les valeurs
+                    # Allow the user to modify the values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # On recalcule avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not wish to enter new values
                 user_input_x_mm = forms.ask_for_string(
-                    prompt="Entrez la valeur de X (en mm) pour " + profile_symbol.Family.Name +
-                           " (entre " + str(round(intervalle_min_mm, 2)) + " mm et " +
+                    prompt="Enter the X value (in mm) for " + profile_symbol.Family.Name +
+                           " (between " + str(round(intervalle_min_mm, 2)) + " mm and " +
                            str(round(intervalle_max_mm, 2)) + " mm)",
-                    title="Valeur de X"
+                    title="X Value"
                 )
 
                 if user_input_x_mm:
                     try:
                         position_x_mm = float(user_input_x_mm)
 
-                        # Vérification stricte pour inclure la valeur min et max
+                        # Strict check to include the minimum and maximum value
                         if intervalle_min_mm - 1 <= position_x_mm <= intervalle_max_mm:
-                            if panel_length_mm is not None:  # Vérification explicite
+                            if panel_length_mm is not None:  # Explicit check
                                 half_panel_length_mm = panel_length_mm / 2
                                 insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion from mm to feet
                                 break
                             else:
-                                forms.alert("Erreur : panel_length_mm n'est pas défini.")
+                                forms.alert("Error: panel_length_mm is not defined.")
                                 return
                         else:
                             forms.alert(
-                                "La valeur de X doit être comprise entre " +
-                                str(round(intervalle_min_mm, 2)) + " mm et " +
-                                str(round(intervalle_max_mm, 2)) + " mm."
+                                "The X value must be between [" +
+                                str(round(intervalle_min_mm, 2)) + " , " +
+                                str(round(intervalle_max_mm, 2)) + "]"
                             )
                     except ValueError:
-                        forms.alert("La valeur saisie pour X n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("The value entered for X is not valid. Please enter a number.")
                 else:
-                    forms.alert("Aucune valeur n'a été saisie pour X.")
+                    forms.alert("No value was entered for X.")
                     return
+
         if num_profiles == 1:
             with Transaction(family_doc, "Add profile to family") as t:
                 t.Start()
@@ -672,11 +616,11 @@ def add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm
                     profile_symbol.Activate()
 
                 insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
-                family_instance = family_doc.FamilyCreate.NewFamilyInstance(insertion_point, profile_symbol,
-                                                                            StructuralType.NonStructural)
+                family_instance = family_doc.FamilyCreate.NewFamilyInstance(
+                    insertion_point, profile_symbol, StructuralType.NonStructural
+                )
 
                 t.Commit()
-
         else:
             with Transaction(family_doc, "Add profiles to family") as t:
                 t.Start()
@@ -686,15 +630,19 @@ def add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm
                 for i in range(num_profiles):
                     try:
                         if i > 0:
-                            if profile_symbol and profile_symbol.Family.Name not in ["PROFILE_PLN_124_H_WIN_LEFT",
-                                                                                     "PROFILE_PLN_124_H_WIN_RIGHT",
-                                                                                     "PROFILE_STR_152_H_WIN_LEFT",
-                                                                                     "PROFILE_STR_152_H_WIN_RIGHT"]:
+                            if profile_symbol and profile_symbol.Family.Name not in [
+                                "PROFILE_PLN_124_H_WIN_LEFT",
+                                "PROFILE_PLN_124_H_WIN_RIGHT",
+                                "PROFILE_STR_152_H_WIN_LEFT",
+                                "PROFILE_STR_152_H_WIN_RIGHT"
+                            ]:
                                 insertion_point_x_ft += distance_mm / 304.8
-                            if profile_symbol.Family.Name in ["PROFILE_PLN_124_H_WIN_LEFT",
-                                                              "PROFILE_PLN_124_H_WIN_RIGHT",
-                                                              "PROFILE_STR_152_H_WIN_LEFT",
-                                                              "PROFILE_STR_152_H_WIN_RIGHT"]:
+                            if profile_symbol.Family.Name in [
+                                "PROFILE_PLN_124_H_WIN_LEFT",
+                                "PROFILE_PLN_124_H_WIN_RIGHT",
+                                "PROFILE_STR_152_H_WIN_LEFT",
+                                "PROFILE_STR_152_H_WIN_RIGHT"
+                            ]:
                                 insertion_point_z_ft += distance_mm / 304.8
 
                         insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
@@ -704,19 +652,18 @@ def add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm
                                 insertion_point, profile_symbol, StructuralType.NonStructural
                             )
                         else:
-                            TaskDialog.Show("Erreur", "Document de la famille invalide.")
+                            TaskDialog.Show("Error", "Invalid family document.")
                     except Exception as e:
-                        TaskDialog.Show("Erreur", "Une erreur est survenue : {}".format(str(e)))
-
+                        TaskDialog.Show("Error", "An error occurred: {}".format(str(e)))
                 t.Commit()
-
 
         if num_profiles > 0:
             family_doc.Save()
 
     except Exception as e:
-        forms.alert("Error adding profiles to family: {}\nTraceback : {}".format(e, traceback.format_exc()),
+        forms.alert("Error adding profiles to family: {}\nTraceback: {}".format(e, traceback.format_exc()),
                     exitscript=True)
+
 def select_panel():
     """Sélectionne un panneau de mur rideau dans le projet."""
     try:
@@ -734,23 +681,24 @@ def select_panel():
         return None
 
 def open_family_in_editor(panel):
-    """Ouvre la famille associée au panneau dans l'éditeur de famille."""
+    """Opens the family associated with the panel in the family editor."""
     try:
         if not isinstance(panel, FamilyInstance):
-            TaskDialog.Show("Erreur", "L'élément sélectionné n'est pas une instance de famille.")
+            TaskDialog.Show("Error", "The selected element is not a family instance.")
             return None
 
         family = panel.Symbol.Family
         if not family:
-            TaskDialog.Show("Erreur", "Impossible de récupérer la famille associée au panneau.")
+            TaskDialog.Show("Error", "Unable to retrieve the family associated with the panel.")
             return None
 
         family_doc = revit.doc.EditFamily(family)
         return family_doc
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Erreur lors de l'ouverture de la famille : " + str(e))
+        TaskDialog.Show("Error", "Error opening the family: " + str(e))
         return None
+
 
 
 def select_profile_symbol(family_doc):
@@ -786,40 +734,43 @@ class FamilyLoadOptions(IFamilyLoadOptions):
         return True
 
 def load_family_back_to_project(family_doc):
-    """Charge la famille éditée dans le projet principal."""
+    """Loads the edited family into the main project."""
     try:
         family_path = family_doc.PathName
         if not family_path:
-            TaskDialog.Show("Erreur", "Le chemin de la famille est invalide.")
+            TaskDialog.Show("Error", "The family path is invalid.")
             return
 
-        family_doc.Close(False)  # Assurez-vous de fermer le document avant de le charger
+        family_doc.Close(False)  # Make sure to close the document before loading it
 
         familyLoadOptions = FamilyLoadOptions()
 
-        with Transaction(revit.doc, "Charger la famille modifiée") as tx:
+        with Transaction(revit.doc, "Load Modified Family") as tx:
             tx.Start()
             if revit.doc.LoadFamily(family_path, familyLoadOptions):
-                TaskDialog.Show("Succès", "La famille a été rechargée dans le projet.")
+                TaskDialog.Show("Success", "The family has been reloaded into the project.")
             else:
-                TaskDialog.Show("Erreur", "Échec du chargement de la famille.")
+                TaskDialog.Show("Error", "Failed to load the family.")
             tx.Commit()
     except Exception as e:
-        TaskDialog.Show("Erreur", "Erreur lors du chargement de la famille : " + str(e))
+        TaskDialog.Show("Error", "Error loading the family: " + str(e))
+
+
 def generate_random_name(base_name):
-    """Génère un nouveau nom avec 4 chiffres aléatoires."""
+    """Generates a new name with 4 random digits."""
     random_digits = random.randint(1000, 9999)
     return base_name + "_" + str(random_digits)
 
+
 def duplicate_and_modify_family(panel):
-    """Duplique une famille, applique des modifications et la charge dans le projet."""
+    """Duplicates a family, applies modifications, and loads it into the project."""
     try:
         family = panel.Symbol.Family
         family_doc = revit.doc.EditFamily(family)
 
         original_path = family_doc.PathName
         if not original_path:
-            TaskDialog.Show("Erreur", "La famille sélectionnée n'a pas de chemin valide.")
+            TaskDialog.Show("Error", "The selected family does not have a valid path.")
             return None
 
         new_name = generate_random_name(family.Name)
@@ -833,29 +784,29 @@ def duplicate_and_modify_family(panel):
         family_doc.Close(False)
 
         familyLoadOptions = FamilyLoadOptions()
-        with Transaction(revit.doc, "Charger la famille modifiée") as tx:
+        with Transaction(revit.doc, "Load Modified Family") as tx:
             tx.Start()
             if revit.doc.LoadFamily(new_path, familyLoadOptions):
-                TaskDialog.Show("Succès", "La famille '" + new_name + "' a été modifiée et chargée avec succès.")
+                TaskDialog.Show("Success", "The family '" + new_name + "' has been modified and loaded successfully.")
                 tx.Commit()
                 return new_name
             else:
-                TaskDialog.Show("Erreur", "Échec du chargement de la famille modifiée.")
+                TaskDialog.Show("Error", "Failed to load the modified family.")
                 tx.RollBack()
                 return None
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Une erreur est survenue : " + str(e))
+        TaskDialog.Show("Error", "An error occurred: " + str(e))
         return None
 
 
 def modify_panel_family(family_doc):
-    """Applique les modifications nécessaires à une famille de panneaux."""
+    """Applies the necessary modifications to a panel family."""
     try:
         family_manager = family_doc.FamilyManager
 
-        # Ajouter un paramètre personnalisé si nécessaire
-        with Transaction(family_doc, "Ajouter ou modifier un paramètre") as tx:
+        # Add a custom parameter if needed
+        with Transaction(family_doc, "Add or Modify Parameter") as tx:
             tx.Start()
             parameter = family_manager.get_Parameter("CustomParameter")
             if not parameter:
@@ -866,95 +817,95 @@ def modify_panel_family(family_doc):
                     False
                 )
             else:
-                family_manager.Set(parameter, "Nouvelle Valeur")
+                family_manager.Set(parameter, "New Value")
             tx.Commit()
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Erreur lors de la modification de la famille : " + str(e))
+        TaskDialog.Show("Error", "Error modifying the family: " + str(e))
+
 
 def update_panel_family(panel, new_family_name):
-    """Met à jour le panneau sélectionné pour utiliser la nouvelle famille."""
+    """Updates the selected panel to use the new family."""
     try:
         new_family = next((f for f in FilteredElementCollector(revit.doc).OfClass(Family)
-                          if f.Name == new_family_name), None)
+                           if f.Name == new_family_name), None)
 
         if not new_family:
-            TaskDialog.Show("Erreur", "La nouvelle famille n'a pas été trouvée dans le projet.")
+            TaskDialog.Show("Error", "The new family was not found in the project.")
             return
 
         new_symbol = next((s for s in new_family.GetFamilySymbolIds()), None)
 
-        with Transaction(revit.doc, "Update panel to new family") as tx:
+        with Transaction(revit.doc, "Update Panel to New Family") as tx:
             tx.Start()
             panel.Symbol = revit.doc.GetElement(new_symbol)
             tx.Commit()
 
-        TaskDialog.Show("Succès", "Le panneau a été mis à jour avec la nouvelle famille.")
+        TaskDialog.Show("Success", "The panel has been updated with the new family.")
 
     except Exception as e:
-        TaskDialog.Show("Erreur", "Une erreur est survenue lors de la mise à jour du panneau : " + str(e))
+        TaskDialog.Show("Error", "An error occurred while updating the panel: " + str(e))
+
 
 def main():
-    """Point d'entrée principal pour l'ajout de profils à un panneau."""
+    """Main entry point for adding profiles to a panel."""
     panel = select_panel()
     if not panel:
         return
 
     try:
-        # Demander à l'utilisateur s'il veut dupliquer la famille avant modification
-        duplicate = forms.alert("Voulez-vous dupliquer la famille avant modification ?", options=["Oui", "Non"])
+        # Ask the user if they want to duplicate the family before modification
+        duplicate = forms.alert("Do you want to duplicate the family before modification?", options=["Yes", "No"])
 
-        # Si l'utilisateur choisit de dupliquer la famille, dupliquer et modifier
-        if duplicate == "Oui":
-            # Dupliquer et modifier la famille
+        # If the user chooses to duplicate the family, duplicate and modify it
+        if duplicate == "Yes":
             new_family_name = duplicate_and_modify_family(panel)
             if new_family_name:
-                # Mettre à jour la famille du panneau avec la famille dupliquée
+                # Update the panel to use the duplicated family
                 update_panel_family(panel, new_family_name)
             else:
-                forms.alert("La duplication de la famille a échoué.")
+                forms.alert("Family duplication failed.")
                 return
 
-        # Demander à l'utilisateur ce qu'il souhaite faire
+        # Ask the user what they want to do
         action = forms.alert(
-            "Que souhaitez-vous faire ?",
-            options=["Modifier les paramètres", "Insérer des profilés"]
+            "What would you like to do?",
+            options=["Modify Position & Dimensions", "Insert profiles"]
         )
 
-        # Ouvrir la famille dans l'éditeur de famille (nécessaire pour les deux actions)
+        # Open the family in the family editor (necessary for both actions)
         family_doc = open_family_in_editor(panel)
         if family_doc is None:
             return
 
-        if action == "Modifier les paramètres":
-            # Récupérer les paramètres existants (objets Parameter et valeurs en mm)
+        if action == "Modify Position & Dimensions":
+            # Retrieve existing parameters (Parameter objects and values in mm)
             result = get_existing_parameters(panel)
             if not result:
                 return
 
-            # Déballer le tuple en deux variables
             parameters, parameters_mm = result
 
-            # Vérifier si les dictionnaires sont valides
+            # Check if the dictionaries are valid
             if not parameters or not parameters_mm:
-                TaskDialog.Show("Erreur", "Impossible de récupérer les paramètres.")
+                TaskDialog.Show("Error", "Unable to retrieve parameters.")
                 return
 
-            # Afficher l'interface utilisateur pour modifier les paramètres
+            # Display the user interface to modify the parameters
             new_values = modify_parameters_ui(parameters_mm)
             if not new_values:
                 return
 
-            # Appliquer les modifications aux paramètres
+            # Apply the parameter changes
             apply_parameter_changes(panel, parameters, new_values)
 
-        elif action == "Insérer des profilés":
-            # Sélectionner le symbole de profil
+        elif action == "Insert profiles":
+            # Select the profile symbol
             profile_symbol = select_profile_symbol(family_doc)
             if profile_symbol is None:
                 return
 
-            # Demander à l'utilisateur combien de profils ajouter et la distance entre eux
+            # Ask the user how many profiles to add and the distance between them
             user_input_num_profiles = forms.ask_for_string(
                 prompt="How many profiles do you want to add?",
                 title="Number of Profiles",
@@ -967,7 +918,7 @@ def main():
                 return
 
             user_input_distance_mm = forms.ask_for_string(
-                prompt="What distance between the profiles (in mm)?",
+                prompt="What is the distance between the profiles (in mm)?",
                 title="Distance between Profiles",
                 default="100"
             )
@@ -977,16 +928,17 @@ def main():
                 forms.alert("The distance between profiles cannot be negative.")
                 return
 
-            # Appeler la fonction d'ajout de profils
+            # Call the function to add profiles
             add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm)
 
-            # Charger la famille modifiée dans le projet
+            # Load the modified family into the project
             load_family_back_to_project(family_doc)
 
     except ValueError:
         forms.alert("Input error: Please enter valid integers.")
     except Exception as e:
         TaskDialog.Show("Error", "Error entering values: {}".format(e))
+
 
 
 if __name__ == "__main__":

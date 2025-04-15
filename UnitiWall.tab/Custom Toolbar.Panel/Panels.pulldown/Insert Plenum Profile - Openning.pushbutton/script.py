@@ -1,17 +1,28 @@
 # -*- coding: utf-8 -*-
 """
+**Description:**
+This script allows adding vertical profiles, including plenum profiles, to a curtain wall panel in Revit. It supports two workflows:
+1. **Custom Insertion:** The user specifies the number of profiles, spacing between them, and their X-position.
+2. **Default Insertion:** Automatically places two profiles to create the frame of the opening
 
-Description:
-This script allows adding profiles, including a plenum profile, to a curtain wall panel in Revit.
+---
 
-How to use:
-1. Select a panel: The user selects a curtain wall panel from the project.
-2. Choose the number of profiles to create: The user specifies how many profiles, including the plenum profile, they want to add to the panel.
-3. Insert the distance between profiles: The user inputs the desired distance between each profile.
-4. Insert the distance from the start of the panel: The user sets the distance between the first profile and the beginning of the panel.
+**How to Use:**
+1. **Select a Panel:** The user selects a curtain wall panel from the project.
+2. **Choose Insertion Method:**
+   - **Custom Mode:**
+     - Specify the number of profiles to create.
+     - Define the spacing between profiles.
+     - Set the X-position of the first profile relative to the panel's start.
+   - **Default Mode:**
+     - Automatically inserts two profiles at predefined positions.
+3. **Execute:** The profiles are added, and the family is reloaded into the project.
 
-Version: v2
-Author: Wiem Ben Araar
+---
+
+**Version:** v3
+**Authors:** Wiem Ben Araar, Amira Dridi
+
 """
 
 
@@ -33,9 +44,9 @@ import System
 from System.Windows.Forms import (
     Form, Label, TextBox, Button, PictureBox, DialogResult,
     DockStyle, FormStartPosition, TableLayoutPanel, FlowLayoutPanel,
-    SizeType, ColumnStyle, RowStyle, PictureBoxSizeMode
+    SizeType, ColumnStyle, RowStyle, PictureBoxSizeMode, FormBorderStyle
 )
-from System.Drawing import Image, ContentAlignment, Size
+from System.Drawing import Image, ContentAlignment, Size, Font
 
 # Définir un répertoire relatif ou le dossier de l'utilisateur pour le fichier CSV
 csv_directory = os.path.join(os.path.expanduser("~"), "Desktop", "PyRevit", "MyExtension.extension")
@@ -75,30 +86,33 @@ def save_to_csv(profile_name, insertion_point_x, insertion_point_y, insertion_po
     except Exception as e:
         TaskDialog.Show("Error", "Error while saving to CSV file: {}".format(e))
 
+
 class ProfilesInputForm(Form):
     """
-    Fenêtre personnalisée permettant de saisir :
-    - le nombre de profils
-    - la distance entre les profils (en mm)
-    - avec une image explicative en haut
+    A custom form to input:
+    - Number of profiles
+    - Distance between profiles (in mm)
+    - With an explanatory image
     """
 
     def __init__(self, image_path):
         super(ProfilesInputForm, self).__init__()
 
-        # Configuration basique de la fenêtre
+        # ---- Basic form configuration ----
         self.Text = "Add Profiles to Panel"
-        self.Width = 600
-        self.Height = 400
+        self.Width = 1200
+        self.Height = 800
         self.StartPosition = FormStartPosition.CenterScreen
+        self.Font = Font("Arial", 12)
+        self.FormBorderStyle = FormBorderStyle.Sizable  # Allow resizing
 
-        # --- TableLayoutPanel pour organiser l'UI en grille ---
+        # ---- TableLayoutPanel to organize UI in a grid ----
         self.tableLayout = TableLayoutPanel()
         self.tableLayout.Dock = DockStyle.Fill
         self.tableLayout.ColumnCount = 2
-        self.tableLayout.RowCount = 4
+        self.tableLayout.RowCount = 4  # Back to 4 rows, removing the explanatory text
 
-        # Largeur des colonnes (30% pour la première, 70% pour la deuxième)
+        # Column widths: 40% for the first (text), 60% for the second (image)
         self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 30))
         self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 70))
 
@@ -107,6 +121,7 @@ class ProfilesInputForm(Form):
         # 2) Ligne pour "Number of Profiles" (AutoSize)
         # 3) Ligne pour "Distance" (AutoSize)
         # 4) Ligne pour les boutons (reçoit le FlowLayoutPanel)
+
         self.tableLayout.RowStyles.Add(RowStyle(SizeType.Absolute, 150))
         self.tableLayout.RowStyles.Add(RowStyle(SizeType.AutoSize))
         self.tableLayout.RowStyles.Add(RowStyle(SizeType.AutoSize))
@@ -114,67 +129,79 @@ class ProfilesInputForm(Form):
 
         self.Controls.Add(self.tableLayout)
 
-        # --- Image en haut (PictureBox) ---
+        # ---- PictureBox for the image ----
         self.pictureBox = PictureBox()
         self.pictureBox.Dock = DockStyle.Fill
         self.pictureBox.SizeMode = PictureBoxSizeMode.Zoom
+        self.pictureBox.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle  # Add a border
         try:
             self.pictureBox.Image = Image.FromFile(image_path)
-        except:
-            pass  # Gérer le cas où l'image n'est pas trouvée
+        except Exception as e:
+            TaskDialog.Show("Error", "Unable to load image: {}".format(e))
 
-        # Faire span sur 2 colonnes (pour occuper toute la largeur)
+        # Occupy both columns and the first row for the image
         self.tableLayout.SetColumnSpan(self.pictureBox, 2)
         self.tableLayout.Controls.Add(self.pictureBox, 0, 0)
 
-        # --- Label : "How many profiles" ---
+        # ---- Label: "How many profiles" ----
         self.labelNumProfiles = Label()
         self.labelNumProfiles.Text = "How many profiles do you want to add?"
         self.labelNumProfiles.TextAlign = ContentAlignment.MiddleRight
-        self.labelNumProfiles.AutoSize = True  # Activer AutoSize
+        self.labelNumProfiles.AutoSize = True
+        self.labelNumProfiles.Font = Font("Arial", 14)
         self.tableLayout.Controls.Add(self.labelNumProfiles, 0, 1)
 
-        # --- TextBox pour le nombre de profils ---
+        # ---- TextBox for number of profiles ----
         self.textBoxNumProfiles = TextBox()
-        self.textBoxNumProfiles.Text = "1"  # Valeur par défaut
+        self.textBoxNumProfiles.Text = "1"  # Default value
+        self.textBoxNumProfiles.Font = Font("Arial", 14)
+        self.textBoxNumProfiles.Width = 200
         self.tableLayout.Controls.Add(self.textBoxNumProfiles, 1, 1)
 
-        # --- Label : "Distance between profiles" ---
+        # ---- Label: "Distance between profiles" ----
         self.labelDistance = Label()
-        self.labelDistance.Text = "Distance between the profiles (in mm)?"
+        self.labelDistance.Text = "Distance between profiles (in mm)?"
         self.labelDistance.TextAlign = ContentAlignment.MiddleRight
-        self.labelDistance.AutoSize = True  # Activer AutoSize
+        self.labelDistance.AutoSize = True
+        self.labelDistance.Font = Font("Arial", 14)
         self.tableLayout.Controls.Add(self.labelDistance, 0, 2)
 
-        # --- TextBox pour la distance ---
+        # ---- TextBox for distance ----
         self.textBoxDistance = TextBox()
-        self.textBoxDistance.Text = "100"  # Valeur par défaut
+        self.textBoxDistance.Text = "100"  # Default value
+        self.textBoxDistance.Font = Font("Arial", 14)
+        self.textBoxDistance.Width = 200
         self.tableLayout.Controls.Add(self.textBoxDistance, 1, 2)
 
-        # --- FlowLayoutPanel pour les boutons (OK / Cancel) ---
+        # ---- FlowLayoutPanel for OK / Cancel buttons ----
         self.buttonPanel = FlowLayoutPanel()
         self.buttonPanel.FlowDirection = System.Windows.Forms.FlowDirection.RightToLeft
         self.buttonPanel.Dock = DockStyle.Fill
+        self.buttonPanel.Padding = System.Windows.Forms.Padding(10)
         self.tableLayout.SetColumnSpan(self.buttonPanel, 2)
         self.tableLayout.Controls.Add(self.buttonPanel, 0, 3)
 
-        # --- Bouton OK ---
+        # ---- OK Button ----
         self.okButton = Button()
         self.okButton.Text = "OK"
         self.okButton.DialogResult = DialogResult.OK
+        self.okButton.Font = Font("Arial", 14, System.Drawing.FontStyle.Bold)
+        self.okButton.Padding = System.Windows.Forms.Padding(15, 5, 15, 5)
+        self.okButton.MinimumSize = Size(120, 40)
         self.buttonPanel.Controls.Add(self.okButton)
 
-        # --- Bouton Cancel ---
+        # ---- Cancel Button ----
         self.cancelButton = Button()
         self.cancelButton.Text = "Cancel"
         self.cancelButton.DialogResult = DialogResult.Cancel
+        self.cancelButton.Font = Font("Arial", 14)
+        self.cancelButton.Padding = System.Windows.Forms.Padding(15, 5, 15, 5)
+        self.cancelButton.MinimumSize = Size(150, 40)
         self.buttonPanel.Controls.Add(self.cancelButton)
 
-        # Associer les boutons OK et Annuler
+        # Associate OK and Cancel buttons
         self.AcceptButton = self.okButton
         self.CancelButton = self.cancelButton
-
-
 def get_profiles_input(image_path):
     """
     Ouvre la fenêtre ProfilesInputForm et renvoie (nombre_de_profils, distance_mm).
@@ -287,17 +314,19 @@ def load_family_back_to_project(family_doc):
 
 
 def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_profiles, distance_mm):
-    """Ajoute plusieurs instances du profil sélectionné à la famille avec une position spécifique, en tenant compte de la largeur du panneau."""
+    """Adds multiple instances of the selected profile to the family at a specific position, taking into account the panel width."""
     try:
-        # Position initiale
+        # Initial position
         insertion_point_x_ft = 0
         insertion_point_y_ft = 0
         insertion_point_z_ft = 0
-        # Récupérer les valeurs de SILL et LINTEL pour les contraintes de Z
+
+        # Retrieve the values of SILL and LINTEL for Z constraints
         panel = select_panel()
         if not panel:
-            TaskDialog.Show("Erreur", "Aucun panneau sélectionné.")
+            TaskDialog.Show("Error", "No panel selected.")
             return
+
         sill_param = panel.LookupParameter("SILL")
         right_param = panel.LookupParameter("RIGHT")
         lintel_param = panel.LookupParameter("LINTEL")
@@ -305,348 +334,325 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
         l_window_param = panel.LookupParameter("L_WINDOW")
 
         if not sill_param or not lintel_param or not left_param or not l_window_param:
-            TaskDialog.Show("Erreur",
-                            "Les paramètres SILL, LINTEL, LEFT ou L_WINDOW sont introuvables dans le panneau.")
+            TaskDialog.Show("Error",
+                            "The parameters SILL, LINTEL, LEFT, or L_WINDOW are not found in the panel.")
             return
 
-        sill_value_ft = sill_param.AsDouble()  # Valeur de SILL en pieds
+        sill_value_ft = sill_param.AsDouble()  # SILL value in feet
         right_value_ft = right_param.AsDouble()
-        lintel_value_ft = lintel_param.AsDouble()  # Valeur de LINTEL en pieds
-        left_value_ft = left_param.AsDouble()  # Valeur de LEFT en pieds
-        l_window_value_ft = l_window_param.AsDouble()  # Valeur de L_WINDOW en pieds
+        lintel_value_ft = lintel_param.AsDouble()  # LINTEL value in feet
+        left_value_ft = left_param.AsDouble()  # LEFT value in feet
+        l_window_value_ft = l_window_param.AsDouble()  # L_WINDOW value in feet
 
-        # Convertir LEFT et L_WINDOW en millimètres pour l'affichage
+        # Convert LEFT and L_WINDOW to millimeters for display
         left_value_mm = left_value_ft * 304.8
         l_window_value_mm = l_window_value_ft * 304.8
         right_value_mm = right_value_ft * 304.8
-        # Conditions spécifiques pour chaque profil
+
+        # Specific conditions for each profile
         if profile_symbol.Family.Name == "PROFILE_PLN_124_V":
             while True:
-                # Définition de l'intervalle minimal et maximal
-                intervalle_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
-                intervalle_max_mm = right_value_mm + l_window_value_mm + 31.5
+                # Define the minimum and maximum interval
+                interval_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
+                interval_max_mm = right_value_mm + l_window_value_mm + 31.5
 
-                # Vérification si l'espace est insuffisant
-                espace_disponible_gauche = intervalle_min_mm  # Espace avant le min
-                espace_disponible_droite = panel_length_mm - intervalle_max_mm  # Espace après le max
-                espace_requis = (num_profiles - 1) * distance_mm  # Espace total nécessaire
+                # Check if the space is insufficient
+                available_space_left = interval_min_mm  # Space before the min
+                available_space_right = panel_length_mm - interval_max_mm  # Space after the max
+                required_space = (num_profiles - 1) * distance_mm  # Total required space
 
-                if espace_disponible_gauche < espace_requis and espace_disponible_droite < espace_requis:
+                if available_space_left < required_space and available_space_right < required_space:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour " + str(num_profiles) +
-                        " profilés avec une distance de " + str(distance_mm) + " mm entre eux.\n" +
-                        "Veuillez réduire le nombre de profilés, diminuer la distance entre eux."
+                        "Error: The available space is insufficient for " + str(num_profiles) +
+                        " profiles with a distance of " + str(distance_mm) + " mm between them.\n" +
+                        "Please reduce the number of profiles or decrease the distance between them."
                     )
 
-                    # Demander de nouvelles valeurs à l'utilisateur
+                    # Ask the user for new values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # Recalculer avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not want to enter new values
 
-                if intervalle_min_mm < 0:
-                    # Si intervalle_min_mm est négatif, on n'affiche que la partie "après intervalle_max_mm"
+                if interval_min_mm < 94.5:
+                    # If interval_min_mm is negative, only display the part "after interval_max_mm"
                     prompt_message = (
-                            "Entrez la valeur de X (en mm) pour " + profile_symbol.Family.Name +
-                            " entre  " +
-                            str(round(intervalle_max_mm +63, 2)) + " mm et" +
-                            str(round(
-                                panel_length_mm - (
-                                        num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                        "Enter the value of X (in mm) for " + profile_symbol.Family.Name +
+                        " between [" +
+                        str(round(interval_max_mm + 63, 2)) + " , " +
+                        str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                     )
                 else:
-                    # Sinon, on affiche les deux options (avant intervalle_min_mm ou après intervalle_max_mm)
+                    # Otherwise, display both options (before interval_min_mm or after interval_max_mm)
                     prompt_message = (
-                            "La valeur de X doit être ENTRE 94.5 " +
-                            str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                            str(round(intervalle_max_mm, 2)) + " mm et" +
-                            str(round(
-                                panel_length_mm - (
-                                        num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                        "The value of X must be between [94.5 , " +
+                        str(round(interval_min_mm, 2)) + "] or between [" +
+                        str(round(interval_max_mm, 2)) + " , " +
+                        str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                     )
 
-                    # Demander la valeur de Z à l'utilisateur
+                # Ask the user for the value of X
                 user_input_x_mm = forms.ask_for_string(
                     prompt=prompt_message,
-                    title="Valeur de X"
+                    title="Value of X"
                 )
 
                 if user_input_x_mm:
                     try:
                         position_x_mm = float(user_input_x_mm)
 
-                        # Vérification stricte : X doit être AVANT min ou APRÈS max tout en respectant l'incrémentation
-                        if (position_x_mm < intervalle_min_mm and (
-                                position_x_mm) >= 0) or \
-                                (position_x_mm > intervalle_max_mm and (
-                                        position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
+                        # Strict check: X must be BEFORE the min or AFTER the max while respecting the incrementation
+                        if (position_x_mm < interval_min_mm and position_x_mm > 0) or \
+                           (position_x_mm > interval_max_mm and (position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
 
-                            if panel_length_mm is not None:  # Vérification explicite
+                            if panel_length_mm is not None:  # Explicit check
                                 half_panel_length_mm = panel_length_mm / 2
                                 insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Convert mm -> feet
                                 break
                             else:
-                                forms.alert("Erreur : panel_length_mm n'est pas défini.")
+                                forms.alert("Error: panel_length_mm is not defined.")
                                 return
                         else:
-                            if intervalle_min_mm < 0:
-                                # Si intervalle_min_mm est négatif, on n'affiche que la partie "après intervalle_max_mm"
+                            if interval_min_mm < 0:
                                 prompt_message = (
-                                        "Entrez la valeur de X (en mm) pour " + profile_symbol.Family.Name +
-                                        " entre  " +
-                                        str(round(intervalle_max_mm +63, 2)) + " mm et" +
-                                        str(round(
-                                            panel_length_mm - (
-                                                    num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                                    "Enter the value of X (in mm) for " + profile_symbol.Family.Name +
+                                    " between [" +
+                                    str(round(interval_max_mm + 63, 2)) + " , " +
+                                    str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                                 )
                             else:
-                                # Sinon, on affiche les deux options (avant intervalle_min_mm ou après intervalle_max_mm)
                                 prompt_message = (
-                                        "La valeur de X doit être ENTRE 94.5 " +
-                                        str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                                        str(round(intervalle_max_mm, 2)) + " mm et" +
-                                        str(round(
-                                            panel_length_mm - (
-                                                    num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                                    "The value of X must be between [94.5 , " +
+                                    str(round(interval_min_mm, 2)) + "] or between [" +
+                                    str(round(interval_max_mm, 2)) + " , " +
+                                    str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                                 )
 
-                            # Demander la valeur de Z à l'utilisateur
+                            # Ask again for the value of X
                             user_input_x_mm = forms.ask_for_string(
                                 prompt=prompt_message,
-                                title="Valeur de X"
+                                title="Value of X"
                             )
 
                     except ValueError:
-                        forms.alert("La valeur saisie pour X n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("The value entered for X is not valid. Please enter a number.")
                 else:
-                    forms.alert("Aucune valeur n'a été saisie pour X.")
+                    forms.alert("No value was entered for X.")
                     return
 
-            insertion_point_y_ft = 294 / 304.8  # Y en bas
+            insertion_point_y_ft = 294 / 304.8  # Y at the bottom
+
         elif profile_symbol.Family.Name == "PROFILE_PLN_175_V":
             while True:
-                # Définition de l'intervalle minimal et maximal
-                intervalle_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
-                intervalle_max_mm = right_value_mm + l_window_value_mm + 31.5
+                # Define the minimum and maximum interval
+                interval_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
+                interval_max_mm = right_value_mm + l_window_value_mm + 31.5
 
-                # Vérification si l'espace est insuffisant
-                espace_disponible_gauche = intervalle_min_mm  # Espace avant le min
-                espace_disponible_droite = panel_length_mm - intervalle_max_mm  # Espace après le max
-                espace_requis = (num_profiles - 1) * distance_mm  # Espace total nécessaire
+                # Check if the space is insufficient
+                available_space_left = interval_min_mm  # Space before the min
+                available_space_right = panel_length_mm - interval_max_mm  # Space after the max
+                required_space = (num_profiles - 1) * distance_mm  # Total required space
 
-                if espace_disponible_gauche < espace_requis and espace_disponible_droite < espace_requis:
+                if available_space_left < required_space and available_space_right < required_space:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour " + str(num_profiles) +
-                        " profilés avec une distance de " + str(distance_mm) + " mm entre eux.\n" +
-                        "Veuillez réduire le nombre de profilés, diminuer la distance entre eux."
+                        "Error: The available space is insufficient for " + str(num_profiles) +
+                        " profiles with a distance of " + str(distance_mm) + " mm between them.\n" +
+                        "Please reduce the number of profiles or decrease the distance between them."
                     )
 
-                    # Demander de nouvelles valeurs à l'utilisateur
+                    # Ask the user for new values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # Recalculer avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not want to enter new values
 
-                # Demander la position X
+                # Ask for the X position
                 user_input_x_mm = forms.ask_for_string(
-                    prompt="La valeur de X doit être ENTRE intervalle_max_mm et " +
-                                str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                                str(round(intervalle_max_mm + 63, 2)) + " mm et" +
-                                str(round(
-                                    panel_length_mm - (
-                                                num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation.",
-                    title="Valeur de X"
+                    prompt="The value of X must be between [" + str(round(interval_max_mm, 2)) +
+                           " , " + str(round(interval_min_mm, 2)) +
+                           "] or between [" + str(round(interval_max_mm + 63, 2)) +
+                           " , " + str(round(panel_length_mm - (num_profiles - 1) * distance_mm, 2)) +
+                           " ]",
+                    title="Value of X"
                 )
 
                 if user_input_x_mm:
                     try:
                         position_x_mm = float(user_input_x_mm)
 
-                        # Vérification stricte : X doit être AVANT min ou APRÈS max tout en respectant l'incrémentation
-                        if (position_x_mm < intervalle_min_mm and (
-                                position_x_mm) >= 0) or \
-                                (position_x_mm > intervalle_max_mm and (
-                                        position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
+                        # Strict check: X must be BEFORE the min or AFTER the max while respecting the incrementation
+                        if (position_x_mm < interval_min_mm and position_x_mm > 0) or \
+                           (position_x_mm > interval_max_mm and (position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
 
-                            if panel_length_mm is not None:  # Vérification explicite
+                            if panel_length_mm is not None:  # Explicit check
                                 half_panel_length_mm = panel_length_mm / 2
                                 insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Convert mm -> feet
                                 break
                             else:
-                                forms.alert("Erreur : panel_length_mm n'est pas défini.")
+                                forms.alert("Error: panel_length_mm is not defined.")
                                 return
                         else:
                             forms.alert(
-                                "La valeur de X doit être ENTRE intervalle_max_mm et " +
-                                str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                                str(round(intervalle_max_mm +63, 2)) + " mm et" +
-                                str(round(
-                                    panel_length_mm - (
-                                                num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                                "The value of X must be between [" + str(round(interval_max_mm, 2)) +
+                                " , " + str(round(interval_min_mm, 2)) +
+                                "] or between [" + str(round(interval_max_mm + 63, 2)) +
+                                " , " + str(round(panel_length_mm - (num_profiles - 1) * distance_mm, 2)) +
+                                "]"
                             )
+
                     except ValueError:
-                        forms.alert("La valeur saisie pour X n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("The value entered for X is not valid. Please enter a number.")
                 else:
-                    forms.alert("Aucune valeur n'a été saisie pour X.")
+                    forms.alert("No value was entered for X.")
                     return
-            insertion_point_y_ft = 319.5 / 304.8  # Y en bas
+            insertion_point_y_ft = 319.5 / 304.8  # Y at the bottom
+
         elif profile_symbol.Family.Name == "PROFILE_PLN_225_V":
             while True:
-                # Définition de l'intervalle minimal et maximal
-                intervalle_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
-                intervalle_max_mm = right_value_mm + l_window_value_mm + 31.5
+                # Define the minimum and maximum interval
+                interval_min_mm = right_value_mm - 31.5 - (num_profiles - 1) * distance_mm
+                interval_max_mm = right_value_mm + l_window_value_mm + 31.5
 
-                # Vérification si l'espace est insuffisant
-                espace_disponible_gauche = intervalle_min_mm  # Espace avant le min
-                espace_disponible_droite = panel_length_mm - intervalle_max_mm  # Espace après le max
-                espace_requis = (num_profiles - 1) * distance_mm  # Espace total nécessaire
+                # Check if the space is insufficient
+                available_space_left = interval_min_mm  # Space before the min
+                available_space_right = panel_length_mm - interval_max_mm  # Space after the max
+                required_space = (num_profiles - 1) * distance_mm  # Total required space
 
-                if espace_disponible_gauche < espace_requis and espace_disponible_droite < espace_requis:
+                if available_space_left < required_space and available_space_right < required_space:
                     forms.alert(
-                        "Erreur : L'espace disponible est insuffisant pour " + str(num_profiles) +
-                        " profilés avec une distance de " + str(distance_mm) + " mm entre eux.\n" +
-                        "Veuillez réduire le nombre de profilés, diminuer la distance entre eux."
+                        "Error: The available space is insufficient for " + str(num_profiles) +
+                        " profiles with a distance of " + str(distance_mm) + " mm between them.\n" +
+                        "Please reduce the number of profiles or decrease the distance between them."
                     )
 
-                    # Demander de nouvelles valeurs à l'utilisateur
+                    # Ask the user for new values
                     user_input_num_profiles = forms.ask_for_string(
-                        prompt="Entrez un nouveau nombre de profilés :",
-                        title="Nombre de profilés"
+                        prompt="Enter a new number of profiles:",
+                        title="Number of profiles"
                     )
                     user_input_distance_mm = forms.ask_for_string(
-                        prompt="Entrez une nouvelle distance entre les profilés (en mm) :",
-                        title="Distance entre profilés"
+                        prompt="Enter a new distance between profiles (in mm):",
+                        title="Distance between profiles"
                     )
 
                     if user_input_num_profiles and user_input_distance_mm:
                         try:
                             num_profiles = int(user_input_num_profiles)
                             distance_mm = float(user_input_distance_mm)
-                            continue  # Recalculer avec les nouvelles valeurs
+                            continue  # Recalculate with the new values
                         except ValueError:
-                            forms.alert("Valeur invalide. Veuillez entrer des nombres valides.")
-                            continue  # Redemander la saisie
+                            forms.alert("Invalid value. Please enter valid numbers.")
+                            continue  # Ask again
                     else:
-                        forms.alert("Aucune valeur saisie. Opération annulée.")
-                        break  # Quitter si l'utilisateur ne veut pas saisir de nouvelles valeurs
+                        forms.alert("No value entered. Operation cancelled.")
+                        break  # Exit if the user does not want to enter new values
 
-
-                # ✅ Demande de la valeur de X
-                if intervalle_min_mm < 0:
-                    # Si intervalle_min_mm est négatif, on n'affiche que la partie "après intervalle_max_mm"
+                # ✅ Ask for the value of X
+                if interval_min_mm < 0:
+                    # If interval_min_mm is negative, only display the part "after interval_max_mm"
                     prompt_message = (
-                            "Entrez la valeur de X (en mm) pour " + profile_symbol.Family.Name +
-                            " entre  " +
-                                str(round(intervalle_max_mm +63, 2)) + " mm et" +
-                                str(round(
-                                    panel_length_mm - (
-                                                num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                        "Enter the value of X (in mm) for " + profile_symbol.Family.Name +
+                        " between [" +
+                        str(round(interval_max_mm + 63, 2)) + " , " +
+                        str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                     )
                 else:
-                    # Sinon, on affiche les deux options (avant intervalle_min_mm ou après intervalle_max_mm)
+                    # Otherwise, display both options (before interval_min_mm or after interval_max_mm)
                     prompt_message = (
-                            "La valeur de X doit être ENTRE 94.5 " +
-                                str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                                str(round(intervalle_max_mm, 2)) + " mm et" +
-                                str(round(
-                                    panel_length_mm - (
-                                                num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                        "The value of X must be between [94.5 , " +
+                        str(round(interval_min_mm, 2)) + "] or between [" +
+                        str(round(interval_max_mm, 2)) + " , " +
+                        str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                     )
 
-                # Demander la valeur de Z à l'utilisateur
+                # Ask the user for the value of X
                 user_input_x_mm = forms.ask_for_string(
                     prompt=prompt_message,
-                    title="Valeur de X"
+                    title="Value of X"
                 )
 
                 if user_input_x_mm:
                     try:
                         position_x_mm = float(user_input_x_mm)
 
-                        # Vérification stricte : X doit être AVANT min ou APRÈS max tout en respectant l'incrémentation
-                        if (position_x_mm < intervalle_min_mm and (
-                                position_x_mm) >= 0) or \
-                                (position_x_mm > intervalle_max_mm and (
-                                        position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
+                        # Strict check: X must be BEFORE the min or AFTER the max while respecting the incrementation
+                        if (position_x_mm < interval_min_mm and position_x_mm >= 0) or \
+                           (position_x_mm > interval_max_mm and (position_x_mm + (num_profiles - 1) * distance_mm) <= panel_length_mm):
 
-                            if panel_length_mm is not None:  # Vérification explicite
+                            if panel_length_mm is not None:  # Explicit check
                                 half_panel_length_mm = panel_length_mm / 2
                                 insertion_point_x_mm = position_x_mm - half_panel_length_mm
-                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Conversion mm -> pieds
+                                insertion_point_x_ft = insertion_point_x_mm / 304.8  # Convert mm -> feet
                                 break
                             else:
-                                forms.alert("Erreur : panel_length_mm n'est pas défini.")
+                                forms.alert("Error: panel_length_mm is not defined.")
                                 return
                         else:
                             forms.alert(
-                                "La valeur de X doit être ENTRE 94.5 et " +
-                                str(round(intervalle_min_mm, 2)) + " mm ou entre  " +
-                                str(round(intervalle_max_mm, 2)) + " mm et" +
-                                str(round(
-                                    panel_length_mm - (
-                                                num_profiles - 1) * distance_mm)) + " mm tout en tenant compte de l'incrémentation."
+                                "The value of X must be between [94.5 , " +
+                                str(round(interval_min_mm, 2)) + "] or between [" +
+                                str(round(interval_max_mm, 2)) + " , " +
+                                str(round(panel_length_mm - ((num_profiles - 1) * distance_mm))) + "]"
                             )
                     except ValueError:
-                        forms.alert("La valeur saisie pour X n'est pas valide. Veuillez entrer un nombre.")
+                        forms.alert("The value entered for X is not valid. Please enter a number.")
                 else:
-                    forms.alert("Aucune valeur n'a été saisie pour X.")
+                    forms.alert("No value was entered for X.")
                     return
-            insertion_point_y_ft = 344.5 / 304.8  # Y en bas
+            insertion_point_y_ft = 344.5 / 304.8  # Y at the bottom
 
-
-
-        # Si un seul profil doit être ajouté, sortir de la boucle après la première insertion
+        # If only one profile is to be added, exit the loop after the first insertion
         if num_profiles == 1:
             with Transaction(family_doc, "Add profile to family") as t:
                 t.Start()
                 if not profile_symbol.IsActive:
                     profile_symbol.Activate()
 
-                # Insertion à la position ajustée
+                # Insert at the adjusted position
                 insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
                 family_instance = family_doc.FamilyCreate.NewFamilyInstance(insertion_point, profile_symbol, StructuralType.NonStructural)
 
-                # Sauvegarder les informations dans le fichier CSV
+                # Save the information to the CSV file
                 save_to_csv(profile_symbol.Family.Name, insertion_point_x_ft * 304.8, insertion_point_y_ft * 304.8,
                             insertion_point_z_ft * 304.8, distance_mm)
 
                 t.Commit()
 
-        # Si plusieurs profils doivent être ajoutés, utiliser une boucle
+        # If multiple profiles need to be added, use a loop
         else:
             with Transaction(family_doc, "Add profiles to family") as t:
                 t.Start()
@@ -654,34 +660,33 @@ def add_profiles_to_family(family_doc, profile_symbol, panel_length_mm, num_prof
                     profile_symbol.Activate()
 
                 for i in range(num_profiles):
-                    # Si c'est le premier profil, ne pas incrémenter
+                    # For the first profile, do not increment
                     if i > 0:
-                        # Incrémenter la position X si ce n'est pas un profil de type H
-                        if profile_symbol.Family.Name not in ["PROFILE_PLN_124_H","PROFILE_PLN_175_H","PROFILE_PLN_225_H"]:
-                            insertion_point_x_ft += distance_mm / 304.8  # Conversion de mm à pieds
+                        # Increment the X position if it is not an H-type profile
+                        if profile_symbol.Family.Name not in ["PROFILE_PLN_124_H", "PROFILE_PLN_175_H", "PROFILE_PLN_225_H"]:
+                            insertion_point_x_ft += distance_mm / 304.8  # Convert mm to feet
 
-                        # Incrémenter la position Z si c'est un profil de type H
-                        if profile_symbol.Family.Name in ["PROFILE_PLN_124_H","PROFILE_PLN_175_H","PROFILE_PLN_225_H"]:
-                            insertion_point_z_ft += distance_mm / 304.8  # Incrémentation de la position Z
+                        # Increment the Z position if it is an H-type profile
+                        if profile_symbol.Family.Name in ["PROFILE_PLN_124_H", "PROFILE_PLN_175_H", "PROFILE_PLN_225_H"]:
+                            insertion_point_z_ft += distance_mm / 304.8  # Increment the Z position
 
-                    # Insertion à la position ajustée
+                    # Insert at the adjusted position
                     insertion_point = XYZ(insertion_point_x_ft, insertion_point_y_ft, insertion_point_z_ft)
                     family_instance = family_doc.FamilyCreate.NewFamilyInstance(insertion_point, profile_symbol,
                                                                                 StructuralType.NonStructural)
-                    # Sauvegarder les informations dans le fichier CSV
+                    # Save the information to the CSV file
                     save_to_csv(profile_symbol.Family.Name, insertion_point_x_ft * 304.8, insertion_point_y_ft * 304.8,
                                 insertion_point_z_ft * 304.8, distance_mm)
 
-
-
                 t.Commit()
 
-        # Sauvegarder la famille seulement si des profils ont été ajoutés
+        # Save the family only if profiles have been added
         if num_profiles > 0:
             family_doc.Save()
 
     except Exception as e:
         forms.alert("Error adding profiles to family : {}\nTraceback : {}".format(e, traceback.format_exc()), exitscript=True)
+
 
 
 
@@ -702,8 +707,8 @@ def main():
         return
 
     insertion_method = forms.ask_for_one_item(
-        ["Insert Existing Profiles", "Insert Cadre openning"],
-        default="Insert Existing Profiles",
+        ["Insert Custom Profiles", "Insert Profiles for Opening Frame"],
+        default="Insert Custom Profiles",
         title="Select Insertion Method",
         prompt="Choose an option:"
     )
@@ -711,14 +716,14 @@ def main():
     if not insertion_method:
         return
 
-    if insertion_method == 'Insert Existing Profiles':
+    if insertion_method == 'Insert Custom Profiles':
         # Existing workflow
         profile_symbol = select_profile_symbol(family_doc)
         if not profile_symbol:
             return
 
         # Get user input for profiles
-        image_path = r"C:\Users\wiemb\Desktop\MainBefore.jpg"
+        image_path = r"C:\Users\wiemb\Desktop\PyRevit\MyExtension.extension\Tutto Plenum.png"
         num_profiles, distance_mm = get_profiles_input(image_path)
         if None in (num_profiles, distance_mm):
             return
