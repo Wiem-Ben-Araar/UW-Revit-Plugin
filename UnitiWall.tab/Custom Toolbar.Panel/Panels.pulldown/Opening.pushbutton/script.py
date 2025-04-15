@@ -800,6 +800,44 @@ def duplicate_and_modify_family(panel):
         return None
 
 
+def update_panel_parameters(panel):
+    """Met à jour les paramètres 'H_PANNEAU' et 'L_PANNEAU' en fonction de la hauteur et de la largeur du panneau."""
+    try:
+        # Récupérer la hauteur et la largeur
+        height_param = panel.LookupParameter("Hauteur")
+        width_param = panel.LookupParameter("Largeur")
+
+        if height_param and width_param:
+            height_value = height_param.AsDouble()  # La hauteur en pieds
+            width_value = width_param.AsDouble()  # La largeur en pieds
+
+            # Essayer de récupérer les paramètres "H_PANNEAU" et "L_PANNEAU"
+            h_panneau_param = panel.LookupParameter("H_PANNEAU")
+            l_panneau_param = panel.LookupParameter("L_PANNEAU")
+
+            if h_panneau_param and l_panneau_param:
+                # Commencer une transaction pour effectuer les modifications
+                with Transaction(revit.doc, "Update H_PANNEAU and L_PANNEAU parameters") as tx:
+                    tx.Start()
+                    # Modifier les paramètres
+                    h_panneau_param.Set(height_value)
+                    l_panneau_param.Set(width_value)
+                    tx.Commit()
+
+                TaskDialog.Show("Success", "Panel parameters have been updated successfully.")
+                return True
+            else:
+                TaskDialog.Show("Error", "The parameters 'H_PANNEAU' or 'L_PANNEAU' were not found.")
+                return False
+        else:
+            TaskDialog.Show("Error", "The 'Height' or 'Width' parameters were not found.")
+            return False
+
+    except Exception as e:
+        TaskDialog.Show("Error", "Error updating panel parameters: " + str(e))
+        return False
+
+
 def modify_panel_family(family_doc):
     """Applies the necessary modifications to a panel family."""
     try:
@@ -863,6 +901,8 @@ def main():
             if new_family_name:
                 # Update the panel to use the duplicated family
                 update_panel_family(panel, new_family_name)
+                # Mettre à jour les paramètres du panneau après la duplication
+                update_panel_parameters(panel)
             else:
                 forms.alert("Family duplication failed.")
                 return
