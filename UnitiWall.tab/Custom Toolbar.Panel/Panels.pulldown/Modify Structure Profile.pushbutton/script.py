@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+
 """
-Script pour modifier la position Z d’un profil structurel dans une famille Revit.
+Script pour modifier la position Z d'un profil structurel dans une famille Revit.
 """
 
 import clr

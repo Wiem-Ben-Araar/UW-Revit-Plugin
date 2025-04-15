@@ -269,10 +269,6 @@ def main():
 
         # 1.1 Obtenir la longueur du panneau (pour l'affichage des positions relatives)
         panel_length = get_panel_length_from_project(panel)
-        if panel_length is not None:
-            print("Longueur du panneau: {:.1f}mm".format(panel_length))
-        else:
-            print("Impossible de déterminer la longueur du panneau.")
 
         # 2. Ouvrir la famille du panneau dans l'éditeur
         family_doc = open_family_in_editor(panel)
@@ -586,10 +582,6 @@ def main():
 
         # 1.1 Obtenir la longueur du panneau (pour l'affichage des positions relatives)
         panel_length = get_panel_length_from_project(panel)
-        if panel_length is not None:
-            print("Longueur du panneau: {:.1f}mm".format(panel_length))
-        else:
-            print("Impossible de déterminer la longueur du panneau.")
 
         # 2. Ouvrir la famille du panneau dans l'éditeur
         family_doc = open_family_in_editor(panel)
@@ -903,10 +895,7 @@ def main():
 
         # 1.1 Obtenir la longueur du panneau (pour l'affichage des positions relatives)
         panel_length = get_panel_length_from_project(panel)
-        if panel_length is not None:
-            print("Longueur du panneau: {:.1f}mm".format(panel_length))
-        else:
-            print("Impossible de déterminer la longueur du panneau.")
+
 
         # 2. Ouvrir la famille du panneau dans l'éditeur
         family_doc = open_family_in_editor(panel)
