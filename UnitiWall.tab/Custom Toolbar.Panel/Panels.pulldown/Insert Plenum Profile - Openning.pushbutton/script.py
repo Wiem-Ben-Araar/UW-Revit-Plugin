@@ -113,19 +113,18 @@ class ProfilesInputForm(Form):
         self.tableLayout.RowCount = 4  # Back to 4 rows, removing the explanatory text
 
         # Column widths: 40% for the first (text), 60% for the second (image)
-        self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 30))
-        self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 70))
+        self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 40))
+        self.tableLayout.ColumnStyles.Add(ColumnStyle(SizeType.Percent, 60))
 
-        # Hauteur des lignes
-        # 1) Ligne pour l'image (150 px de hauteur)
-        # 2) Ligne pour "Number of Profiles" (AutoSize)
-        # 3) Ligne pour "Distance" (AutoSize)
-        # 4) Ligne pour les boutons (reçoit le FlowLayoutPanel)
-
-        self.tableLayout.RowStyles.Add(RowStyle(SizeType.Absolute, 150))
+        # Row heights:
+        # 1) Row for image (70% of height)
+        # 2) Row for "Number of profiles" (AutoSize)
+        # 3) Row for "Distance" (AutoSize)
+        # 4) Row for buttons (60 px)
+        self.tableLayout.RowStyles.Add(RowStyle(SizeType.Percent, 70))
         self.tableLayout.RowStyles.Add(RowStyle(SizeType.AutoSize))
         self.tableLayout.RowStyles.Add(RowStyle(SizeType.AutoSize))
-        self.tableLayout.RowStyles.Add(RowStyle(SizeType.Absolute, 50))
+        self.tableLayout.RowStyles.Add(RowStyle(SizeType.Absolute, 60))
 
         self.Controls.Add(self.tableLayout)
 
