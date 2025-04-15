@@ -383,7 +383,6 @@ def add_profiles_to_family(family_doc, profile_symbol, num_profiles, distance_mm
                         ),
                         title="Z Value"
                     )
-
                     if not user_input_z_mm:
                         forms.alert("No value was entered for Z. Please try again.")
                         continue  # Ask again
